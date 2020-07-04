@@ -3,6 +3,7 @@ package comments
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,8 +46,8 @@ func newDB(connString string) (*db, error) {
 func (db *db) pageCount(pageSize int32, newsUUID uuid.UUID) (int32, error) {
 	query :=
 		"select count(*) " +
-		"from comments_view " +
-		"where news_uid=$1"
+			"from comments_view " +
+			"where news_uid=$1"
 
 	row := db.QueryRow(context.Background(), query, newsUUID)
 	var rowsCount int32
@@ -54,13 +55,13 @@ func (db *db) pageCount(pageSize int32, newsUUID uuid.UUID) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
+	pageCount := math.Ceil(float64(rowsCount) / float64(pageSize))
 
-	return rowsCount / pageSize, nil
+	return int32(pageCount), nil
 }
 
 func (db *db) List(pageNumber, pageSize int32, newsUUID uuid.UUID) ([]*Comment, int32, error) {
-	query :=
-		"select * from comments_view " +
+	query := "select * from comments_view " +
 		"where news_uid=$1 " +
 		"limit $2 offset $3"
 	lastRecord := pageNumber * pageSize
@@ -108,7 +109,7 @@ func (db *db) List(pageNumber, pageSize int32, newsUUID uuid.UUID) ([]*Comment, 
 }
 
 func (db *db) Get(id int32) (*Comment, error) {
-	query := "select * from comments_view where if=$1"
+	query := "select * from comments_view where id=$1"
 
 	row := db.QueryRow(context.Background(), query, id)
 
@@ -119,6 +120,15 @@ func (db *db) Get(id int32) (*Comment, error) {
 	if err != nil {
 		return nil, err
 	}
+	comment.ID = id
+	comment.User, err = uuid.Parse(userUUID)
+	if err != nil {
+		return nil, err
+	}
+	comment.News, err = uuid.Parse(newsUUID)
+	if err != nil {
+		return nil, err
+	}
 
 	return comment, nil
 }
@@ -126,8 +136,8 @@ func (db *db) Get(id int32) (*Comment, error) {
 func (db *db) Create(userUUID, newsUUID uuid.UUID, body string) (*Comment, error) {
 	query :=
 		"insert into comments (user_uid, news_uid, body, created_at, edited_at) " +
-		"values ($1, $2, $3, $4, $5) " +
-		"returning id"
+			"values ($1, $2, $3, $4, $5) " +
+			"returning id"
 
 	now := time.Now()
 	var id int32
@@ -162,7 +172,7 @@ func (db *db) Update(id int32, body string) (*Comment, error) {
 
 	err := db.QueryRow(context.Background(), query, body, now, id).Scan(&userUUID, &newsUUID, &comment.Created)
 	if err != nil {
-		return nil, err
+		return nil, errNotFound
 	}
 
 	comment.User, err = uuid.Parse(userUUID)
@@ -184,7 +194,7 @@ func (db *db) Delete(id int32) error {
 	if err != nil {
 		return err
 	}
-	
+
 	rowsCount := cmd.RowsAffected()
 	if rowsCount == 0 {
 		return errNotFound

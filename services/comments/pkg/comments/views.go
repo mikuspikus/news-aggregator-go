@@ -4,6 +4,7 @@ import (
 
 	// Import the generated protobuf code
 	"context"
+	"log"
 
 	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
@@ -139,7 +140,7 @@ func (s *Service) AddComment(ctx context.Context, req *pb.AddCommentRequest) (*p
 	// if !valid {
 	// 	return nil, statusInvalidToken
 	// }
-
+	log.Print(req.NewsUUID)
 	newsUUID, err := uuid.Parse(req.NewsUUID)
 	if err != nil {
 		return nil, statusInvalidUUID
@@ -197,8 +198,15 @@ func (s *Service) ListComments(ctx context.Context, req *pb.ListCommentsRequest)
 	}
 
 	var newsUUID uuid.UUID
+	var err error
 	if req.NewsUUID == "" {
 		newsUUID = uuid.Nil
+	} else {
+		newsUUID, err = uuid.Parse(req.NewsUUID)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	comments, pageCount, err := s.db.List(req.PageNumber, pageSize, newsUUID)
