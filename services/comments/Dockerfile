@@ -7,16 +7,25 @@ WORKDIR /news-aggregator-go
 COPY . .
 
 ENV GO111MODULE=on
-RUN go mod vendor
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./services/comments/cmd/...
+RUN go build ./services/comments/cmd/comments.go
 
 # Run container
-FROM scratch
-
+FROM golang:1.14.4-alpine
 RUN apk --no-cache add ca-certificates
+ENV APP_HOME=/home/app
+RUN mkdir $APP_HOME
+WORKDIR $APP_HOME
 
-RUN mkdir /app
-WORKDIR /app
+# create the app user
+RUN addgroup -S app && adduser -S app -G app
+
 COPY --from=builder /news-aggregator-go/comments .
+COPY ./services/comments/entrypoint.sh .
 
-CMD ["./comments"]
+RUN chmod +x $APP_HOME/entrypoint.sh
+# chown all the files to the app user
+RUN chown -R app:app $APP_HOME
+
+USER app
+
+CMD ["/home/app/entrypoint.sh"]
