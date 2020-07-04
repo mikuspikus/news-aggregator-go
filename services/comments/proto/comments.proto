@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package comments;
+
+service Comments {
+    // Generic methods
+    rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
+    // Service's methods
+    // All
+    rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse); // must be paged
+    // Single
+    rpc GetComment(GetCommentRequest) returns (GetCommentResponse);
+    // Add
+    rpc AddComment(AddCommentRequest) returns (AddCommentResponse);
+    // Patch
+    rpc EditComment(EditCommentRequest) returns (EditCommentResponse);
+    // Delete
+    rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+}
+// Generic methods
+message GetTokenRequest {
+    string appID = 1;
+    string appSECRET = 2;
+}
+
+message GetTokenResponse{
+    string token = 1;
+}
+
+// Service's methods
+message ListCommentsRequest {
+    string newsUUID = 1;
+    int32 pageSize = 2;
+    int32 pageNumber = 3;
+}
+
+message ListCommentsResponse {
+    repeated SingleComment comments = 1;
+    int32 pageSize = 2;
+    int32 pageNumber = 3;
+    int32 pageCount = 4;
+}
+
+message SingleComment {
+    int32 id = 1;
+    string userUUID = 2;
+    string newsUUID = 3;
+    string body = 4;
+    google.protobuf.Timestamp created = 6;
+    google.protobuf.Timestamp edited = 7;
+}
+
+message GetCommentRequest {
+    int32 id = 1;
+}
+
+message GetCommentResponse {
+    SingleComment comment = 1;
+}
+
+message AddCommentRequest {
+    string token = 1;
+    string newsUUID = 2;
+    string userUUID = 3;
+    string body = 4;
+}
+
+message AddCommentResponse {
+    SingleComment comment = 1;
+}
+
+message EditCommentRequest {
+    string token = 1;
+    int32 id = 2;
+    string body = 3;
+}
+
+message EditCommentResponse {
+    SingleComment comment = 1;
+}
+
+message DeleteCommentRequest {
+    string token = 1;
+    int32 id = 2;
+}
+
+message DeleteCommentResponse {
+    
+}

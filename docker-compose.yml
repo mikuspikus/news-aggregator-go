@@ -1,0 +1,33 @@
+version: "3.3"
+
+services:
+  comments:
+    build:
+      context: .
+      dockerfile: services/comments/Dockerfile
+
+    env_file:
+      - services/comments/.env
+
+    expose:
+      - 3009
+
+    links:
+      - psql_comments
+
+    depends_on:
+      - psql_comments
+
+  psql_comments:
+    image: postgres:12.0-alpine
+    expose:
+      - 5432
+    volumes:
+      - psql_comments_volume:/var/lib/postgresql/data/
+    env_file:
+      - services/comments/.env
+    ports:
+      - 5432:5432
+
+volumes:
+  psql_comments_volume:
