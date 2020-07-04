@@ -5,16 +5,13 @@ services:
     build:
       context: .
       dockerfile: services/comments/Dockerfile
-
     env_file:
       - services/comments/.env
-
-    expose:
-      - 3009
-
+    ports:
+      - 3009:3009
+    restart: on-failure
     links:
       - psql_comments
-
     depends_on:
       - psql_comments
 
