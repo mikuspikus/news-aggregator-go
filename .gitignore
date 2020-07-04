@@ -16,3 +16,6 @@ vendor/
 
 # Goland directory
 *.idea/
+
+# Env files for docker
+*.env*
