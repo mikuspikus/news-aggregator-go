@@ -21,6 +21,7 @@ services:
       - 5432
     volumes:
       - psql_comments_volume:/var/lib/postgresql/data/
+      - ./services/comments/sql/script.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - services/comments/.env
     ports:
