@@ -12,8 +12,10 @@ services:
     restart: on-failure
     links:
       - psql_comments
+      - redis_comments
     depends_on:
       - psql_comments
+      - redis_comments
 
   psql_comments:
     image: postgres:12.0-alpine
@@ -24,8 +26,13 @@ services:
       - ./services/comments/sql/script.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - services/comments/.env
-    ports:
-      - 5432:5432
+
+  redis_comments:
+    build:
+      context: .
+      dockerfile: services/comments/.redis/Dockerfile
+    expose:
+      - 6379
 
 volumes:
   psql_comments_volume:

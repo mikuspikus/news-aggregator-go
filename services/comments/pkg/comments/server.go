@@ -8,6 +8,8 @@ import (
 	// Import the generated protobuf code
 	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
+	"github.com/mikuspikus/news-aggregator-go/pkg/token-storage"
+
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
@@ -15,13 +17,18 @@ import (
 )
 
 // NewService returns new Service instance
-func NewService(connString string) (*Service, error) {
+func NewService(connString, addr, password string, db int, apps map[string]string) (*Service, error) {
 	datastore, err := NewDataStore(connString)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Service{db: datastore}, nil
+	storage, err := token_storage.New(addr, password, db, apps)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Service{db: datastore, tokenStorage: storage}, nil
 
 }
 

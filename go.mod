@@ -6,6 +6,7 @@ go 1.14
 
 require (
 	github.com/caarlos0/env v3.5.0+incompatible
+	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
