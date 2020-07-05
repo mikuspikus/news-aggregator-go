@@ -1,13 +1,9 @@
 FROM golang:1.14.4-alpine as builder
 
-RUN apk update && apk upgrade && apk add --no-cache git
-
 RUN mkdir /news-aggregator-go
 WORKDIR /news-aggregator-go
 COPY . .
-
-ENV GO111MODULE=on
-RUN go build ./services/comments/cmd/comments.go
+RUN go build -mod=vendor ./services/comments/cmd/comments.go
 
 # Run container
 FROM golang:1.14.4-alpine
