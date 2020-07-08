@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package accounts;
+
+service Accounts {
+  // Service's methods
+  rpc GetUser(GetUserRequest) returns (UserInfo);
+  rpc AddUser(AddUserRequest) returns (UserInfo);
+  rpc EditUser(EditUserRequest) returns (UserInfo);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  // Service authentication
+  rpc GetServiceToken(GetServiceTokenRequest) returns (GetServiceTokenResponse);
+  // User authentication
+  rpc GetUserToken(GetUserTokenRequest) returns (UserTokenResponse);
+  rpc RefreshUserToken(RefreshUserTokenRequest) returns (UserTokenResponse);
+  // Utility
+  rpc GetUserByToken(GetUserByTokenRequest) returns (UserInfo);
+}
+
+// Service's methods
+message GetUserRequest {
+  string uid = 1;
+}
+message UserInfo {
+  string uid = 1;
+  string username = 2;
+  google.protobuf.Timestamp created = 3;
+  google.protobuf.Timestamp edited = 4;
+}
+message AddUserRequest {
+  string apiToken = 1;
+  string username = 2;
+  string password = 3;
+}
+message EditUserRequest {
+  string apiToken = 1;
+  string uid = 2;
+  string username = 3;
+  string password = 4;
+}
+message DeleteUserRequest {
+  string apiToken = 1;
+  string userToken = 2;
+  string uid = 3;
+}
+message DeleteUserResponse { }
+// Service authentication
+message GetServiceTokenRequest {
+  string appID = 1;
+  string appSECRET = 2;
+}
+message GetServiceTokenResponse {
+  string token = 1;
+}
+// User authentication
+message GetUserTokenRequest {
+  string apiToken = 1;
+  string username = 2;
+  string password = 3;
+}
+message UserTokenResponse {
+  string token = 1;
+  string refreshToken = 2;
+}
+message RefreshUserTokenRequest {
+  string apiToken = 1;
+  string token = 2;
+  string refreshToken = 3;
+}
+// Utility
+message GetUserByTokenRequest {
+  string apiToken = 1;
+  string userToken = 2;
+}
