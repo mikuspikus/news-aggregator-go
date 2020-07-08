@@ -194,9 +194,7 @@ func (db *db) Delete(id int32) error {
 	if err != nil {
 		return err
 	}
-
-	rowsCount := cmd.RowsAffected()
-	if rowsCount == 0 {
+	if rowsCount := cmd.RowsAffected(); rowsCount == 0 {
 		return errNotFound
 	}
 
