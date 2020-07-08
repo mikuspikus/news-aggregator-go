@@ -1,4 +1,4 @@
-package token_storage
+package simple_token_storage
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrNotFound    = errors.New("app with ID not found")
-	ErrWrongSecret = errors.New("invalid credentials")
+	ErrIDNotFound  = errors.New("app with ID not found")
+	ErrWrongSecret = errors.New("invalid secret")
 )
 
 const DefaultExpirationTime = time.Minute * 30
@@ -43,7 +43,7 @@ func (storage *APITokenStorage) AddToken(appID, appSECRET string) (string, error
 	secret, exists := storage.apps[appID]
 
 	if !exists {
-		return "", ErrNotFound
+		return "", ErrIDNotFound
 	}
 	if secret != appSECRET {
 		return "", ErrWrongSecret

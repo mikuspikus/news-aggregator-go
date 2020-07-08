@@ -8,7 +8,7 @@ import (
 	// Import the generated protobuf code
 	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
-	"github.com/mikuspikus/news-aggregator-go/pkg/token-storage"
+	"github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
 
 	opentracing "github.com/opentracing/opentracing-go"
 
@@ -23,7 +23,7 @@ func NewService(connString, addr, password string, db int, apps map[string]strin
 		return nil, err
 	}
 
-	storage, err := token_storage.New(addr, password, db, apps)
+	storage, err := simple_token_storage.New(addr, password, db, apps)
 	if err != nil {
 		return nil, err
 	}

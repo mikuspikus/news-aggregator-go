@@ -6,7 +6,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/mikuspikus/news-aggregator-go/pkg/token-storage"
+	ststorage "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
 	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
 	"github.com/golang/protobuf/ptypes"
@@ -17,9 +17,11 @@ import (
 )
 
 var (
-	statusInvalidUUID  = status.Error(codes.InvalidArgument, "invalid UUID")
-	statusNotFound     = status.Error(codes.NotFound, "comment not found")
-	statusInvalidToken = status.Error(codes.Unauthenticated, "invalid token-storage token")
+	statusInvalidUUID   = status.Error(codes.InvalidArgument, "invalid UUID")
+	statusNotFound      = status.Error(codes.NotFound, "comment not found")
+	statusInvalidToken  = status.Error(codes.Unauthenticated, "invalid token")
+	statusAppIDNotFound = status.Error(codes.NotFound, "app ID not found")
+	statusInvalidSecret = status.Error(codes.InvalidArgument, "invalid secret")
 )
 
 func internalServerError(err error) error {
@@ -52,7 +54,7 @@ func (comment *Comment) SingleComment() (*pb.SingleComment, error) {
 // Service structure implements gRPC interface for Comments Service
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *token_storage.APITokenStorage
+	tokenStorage *ststorage.APITokenStorage
 }
 
 // GetToken returns new authorization token for appID and appSECRET
@@ -66,11 +68,11 @@ func (s *Service) GetToken(ctx context.Context, req *pb.GetTokenRequest) (*pb.Ge
 		response.Token = token
 		return response, nil
 
-	case token_storage.ErrNotFound:
-		return nil, statusNotFound
+	case ststorage.ErrIDNotFound:
+		return nil, statusAppIDNotFound
 
-	case token_storage.ErrWrongSecret:
-		return nil, statusInvalidToken
+	case ststorage.ErrWrongSecret:
+		return nil, statusInvalidSecret
 
 	default:
 		return nil, internalServerError(err)
