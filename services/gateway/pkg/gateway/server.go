@@ -2,17 +2,27 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"github.com/mikuspikus/news-aggregator-go/pkg/tracer"
 	accounts "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	comments "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/rs/cors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"time"
 )
 
-type gRPCServiceClient interface {
+type Config struct {
+	AllowedOrigins   []string //{"http://localhost:8081"}
+	AllowedMethods   []string //{"GET", "POST", "PATCH", "DELETE", "OPTIONS"}
+	AllowedHeaders   []string //{"Origin", "X-Requested-With", "Content-Type", "Accept", "Access-Control-Allow-Origin", "Authorization"}
+	AllowCredentials bool     // true
 }
 
 type CommentsClient struct {
@@ -66,17 +76,50 @@ func New(cc comments.CommentsClient, ac accounts.AccountsClient, tr opentracing.
 		Comments: &CommentsClient{
 			client:    cc,
 			token:     "",
-			appID:     "",
-			appSECRET: "",
+			appID:     "CommentsAppID",
+			appSECRET: "CommentsAppSecret",
 		},
 		Accounts: &AccountsClient{
 			client:    ac,
 			token:     "",
-			appID:     "",
-			appSECRET: "",
+			appID:     "AccountsAppID",
+			appSECRET: "AccountsAppSecret",
 		},
 		Router: tracer.NewRouter(tr),
 	}
+}
+
+func (s *Server) Start(port int, cfg Config) {
+	cors := cors.New(cors.Options{
+		AllowedOrigins:   cfg.AllowedOrigins,
+		AllowedMethods:   cfg.AllowedMethods,
+		AllowedHeaders:   cfg.AllowedHeaders,
+		AllowCredentials: cfg.AllowCredentials,
+	})
+
+	s.Router.Mux.Use(setContentType)
+	s.routes()
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", port),
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+		Handler:      cors.Handler(s.Router),
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+	server.Shutdown(ctx)
+	log.Println("HTTP server is shutting down")
+	os.Exit(0)
 }
 
 func getAuthorizationToken(req *http.Request) string {
