@@ -42,8 +42,7 @@ message EditUserRequest {
 }
 message DeleteUserRequest {
   string apiToken = 1;
-  string userToken = 2;
-  string uid = 3;
+  string uid = 2;
 }
 message DeleteUserResponse { }
 // Service authentication
