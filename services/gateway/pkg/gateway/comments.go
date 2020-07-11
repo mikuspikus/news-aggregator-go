@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/gorilla/mux"
@@ -11,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	accounts "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	comments "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 )
 
@@ -20,13 +20,6 @@ type Comment struct {
 	UserUUID string
 	NewsUUID string
 	Body     string
-	Created  time.Time
-	Edited   time.Time
-}
-
-type User struct {
-	UID      string
-	Username string
 	Created  time.Time
 	Edited   time.Time
 }
@@ -42,23 +35,6 @@ func extractIntFromString(stringValue string, defaultValue int) (int, error) {
 	}
 
 	return defaultValue, nil
-}
-
-// convertUserInfo converts accounts.UserInfo into User
-func convertUserInfo(userInfo *accounts.UserInfo) (*User, error) {
-	user := new(User)
-	var err error
-	user.UID = userInfo.Uid
-	user.Username = userInfo.Username
-	user.Created, err = ptypes.Timestamp(userInfo.Created)
-	if err != nil {
-		return nil, err
-	}
-	user.Edited, err = ptypes.Timestamp(userInfo.Edited)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
 }
 
 // convertSingleComment converts comments.SingleComment into Comment
@@ -78,6 +54,97 @@ func convertSingleComment(singleComment *comments.SingleComment) (*Comment, erro
 		return nil, err
 	}
 	return comment, nil
+}
+
+func (cc *CommentsClient) GetComment(ctx context.Context, id int32) (*Comment, error) {
+	commentsResponse, err := cc.client.GetComment(ctx, &comments.GetCommentRequest{
+		Id: id,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return convertSingleComment(commentsResponse.Comment)
+}
+
+func (cc *CommentsClient) AddComment(ctx context.Context, body, userUUID, newsUUID string) (*Comment, error) {
+	commentsResponse, err := cc.client.AddComment(ctx, &comments.AddCommentRequest{
+		Body:     body,
+		UserUUID: userUUID,
+		NewsUUID: newsUUID,
+		Token:    cc.token,
+	})
+	if err != nil {
+		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
+			err = cc.UpdateToken()
+			if err != nil {
+				return nil, err
+			}
+			commentsResponse, err = cc.client.AddComment(ctx, &comments.AddCommentRequest{
+				Body:     body,
+				UserUUID: userUUID,
+				NewsUUID: newsUUID,
+				Token:    cc.token,
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return convertSingleComment(commentsResponse.Comment)
+}
+
+func (cc *CommentsClient) UpdateComment(ctx context.Context, body string) (*Comment, error) {
+	commentsResponse, err := cc.client.EditComment(ctx, &comments.EditCommentRequest{
+		Body:  body,
+		Token: cc.token,
+	})
+	if err != nil {
+		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
+			err = cc.UpdateToken()
+			if err != nil {
+				return nil, err
+			}
+			commentsResponse, err = cc.client.EditComment(ctx, &comments.EditCommentRequest{
+				Body:  body,
+				Token: cc.token,
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return convertSingleComment(commentsResponse.Comment)
+}
+
+func (cc *CommentsClient) DeleteComment(ctx context.Context, id int32) error {
+	_, err := cc.client.DeleteComment(ctx, &comments.DeleteCommentRequest{
+		Id:    id,
+		Token: cc.token,
+	})
+	if err != nil {
+		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
+			err = cc.UpdateToken()
+			if err != nil {
+				return err
+			}
+			_, err := cc.client.DeleteComment(ctx, &comments.DeleteCommentRequest{
+				Id:    id,
+				Token: cc.token,
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // getNewsComments returns paged comment for news passed through Mux router
@@ -180,31 +247,7 @@ func (s *Server) deleteComment() http.HandlerFunc {
 
 		ctx := r.Context()
 
-		accountsResponse, err := s.Accounts.client.GetUserByToken(ctx, &accounts.GetUserByTokenRequest{
-			ApiToken:  s.Accounts.token,
-			UserToken: userToken,
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Accounts.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				accountsResponse, err = s.Accounts.client.GetUserByToken(ctx, &accounts.GetUserByTokenRequest{
-					ApiToken:  s.Accounts.token,
-					UserToken: userToken,
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-		user, err := convertUserInfo(accountsResponse)
+		user, err := s.Accounts.GetUserByToken(ctx, userToken)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -216,29 +259,8 @@ func (s *Server) deleteComment() http.HandlerFunc {
 			http.Error(w, "can't parse 'id' route parameter", http.StatusBadRequest)
 			return
 		}
-		commentsResponse, err := s.Comments.client.GetComment(ctx, &comments.GetCommentRequest{
-			Id: int32(id),
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Comments.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				commentsResponse, err = s.Comments.client.GetComment(ctx, &comments.GetCommentRequest{
-					Id: int32(id),
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-		comment, err := convertSingleComment(commentsResponse.Comment)
+
+		comment, err := s.Comments.GetComment(ctx, int32(id))
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -249,30 +271,12 @@ func (s *Server) deleteComment() http.HandlerFunc {
 			return
 		}
 
-		_, err = s.Comments.client.DeleteComment(ctx, &comments.DeleteCommentRequest{
-			Id:    int32(id),
-			Token: s.Comments.token,
-		})
+		err = s.Comments.DeleteComment(ctx, int32(id))
 		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Comments.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				_, err = s.Comments.client.DeleteComment(ctx, &comments.DeleteCommentRequest{
-					Id:    int32(id),
-					Token: s.Comments.token,
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
+			handleRPCErrors(w, err)
+			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -291,31 +295,7 @@ func (s *Server) updateComment() http.HandlerFunc {
 
 		ctx := r.Context()
 
-		accountsResponse, err := s.Accounts.client.GetUserByToken(ctx, &accounts.GetUserByTokenRequest{
-			ApiToken:  s.Accounts.token,
-			UserToken: userToken,
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Accounts.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				accountsResponse, err = s.Accounts.client.GetUserByToken(ctx, &accounts.GetUserByTokenRequest{
-					ApiToken:  s.Accounts.token,
-					UserToken: userToken,
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-		user, err := convertUserInfo(accountsResponse)
+		user, err := s.Accounts.GetUserByToken(ctx, userToken)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -339,29 +319,8 @@ func (s *Server) updateComment() http.HandlerFunc {
 			http.Error(w, "can't parse 'id' route parameter", http.StatusBadRequest)
 			return
 		}
-		commentsResponse, err := s.Comments.client.GetComment(ctx, &comments.GetCommentRequest{
-			Id: int32(id),
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Comments.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				commentsResponse, err = s.Comments.client.GetComment(ctx, &comments.GetCommentRequest{
-					Id: int32(id),
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-		comment, err := convertSingleComment(commentsResponse.Comment)
+
+		comment, err := s.Comments.GetComment(ctx, int32(id))
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -372,34 +331,7 @@ func (s *Server) updateComment() http.HandlerFunc {
 			return
 		}
 
-		updatedResponse, err := s.Comments.client.EditComment(ctx, &comments.EditCommentRequest{
-			Token: s.Comments.token,
-			Id:    int32(id),
-			Body:  req.Body,
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Comments.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				updatedResponse, err = s.Comments.client.EditComment(ctx, &comments.EditCommentRequest{
-					Token: s.Comments.token,
-					Id:    int32(id),
-					Body:  req.Body,
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-
-		comment, err = convertSingleComment(updatedResponse.Comment)
+		comment, err = s.Comments.UpdateComment(ctx, req.Body)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -428,31 +360,7 @@ func (s *Server) createComment() http.HandlerFunc {
 
 		ctx := r.Context()
 
-		accountsResponse, err := s.Accounts.client.GetUserByToken(ctx, &accounts.GetUserByTokenRequest{
-			ApiToken:  s.Accounts.token,
-			UserToken: userToken,
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Accounts.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				accountsResponse, err = s.Accounts.client.GetUserByToken(ctx, &accounts.GetUserByTokenRequest{
-					ApiToken:  s.Accounts.token,
-					UserToken: userToken,
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-		user, err := convertUserInfo(accountsResponse)
+		user, err := s.Accounts.GetUserByToken(ctx, userToken)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -473,36 +381,7 @@ func (s *Server) createComment() http.HandlerFunc {
 		vars := mux.Vars(r)
 		newsUUID := vars["newsuuid"]
 
-		commentsResponse, err := s.Comments.client.AddComment(ctx, &comments.AddCommentRequest{
-			Body:     req.Body,
-			UserUUID: user.UID,
-			NewsUUID: newsUUID,
-			Token:    s.Comments.token,
-		})
-		if err != nil {
-			if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-				err = s.Accounts.UpdateToken()
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-				commentsResponse, err = s.Comments.client.AddComment(ctx, &comments.AddCommentRequest{
-					Body:     req.Body,
-					UserUUID: user.UID,
-					NewsUUID: newsUUID,
-					Token:    s.Comments.token,
-				})
-				if err != nil {
-					handleRPCErrors(w, err)
-					return
-				}
-			} else {
-				handleRPCErrors(w, err)
-				return
-			}
-		}
-
-		comment, err := convertSingleComment(commentsResponse.Comment)
+		comment, err := s.Comments.AddComment(ctx, req.Body, user.UID, newsUUID)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
