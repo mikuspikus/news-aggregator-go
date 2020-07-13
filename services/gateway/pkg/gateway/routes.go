@@ -3,12 +3,12 @@ package gateway
 import "net/http"
 
 func (s *Server) routes() {
-	newsRouter := s.Router.Mux.PathPrefix("/api/comments").Subrouter()
-	//newsRouter.HandleFunc("/", s.getNewsComments()).Methods("GET")
-	//newsRouter.HandleFunc("/", s.createComment()).Methods("POST")
-	//newsRouter.HandleFunc("/{id}", s.getSingleComment()).Methods("GET")
-	//newsRouter.HandleFunc("/{id}", s.updateComment()).Methods("PATCH")
-	//newsRouter.HandleFunc("/{id}", s.deleteComment()).Methods("DELETE")
+	newsRouter := s.Router.Mux.PathPrefix("/api/news").Subrouter()
+	newsRouter.HandleFunc("/", s.getNews()).Methods("GET")
+	newsRouter.HandleFunc("/", s.addNews()).Methods("POST")
+	newsRouter.HandleFunc("/{newsuid}", s.getSingleNews()).Methods("GET")
+	newsRouter.HandleFunc("/{newsuid}", s.updateNews()).Methods("PATCH")
+	newsRouter.HandleFunc("/{newsuid}", s.deleteNews()).Methods("DELETE")
 
 	//postsRouter.HandleFunc("/{id}/like", s.likePost()).Methods("PATCH")
 	//postsRouter.HandleFunc("/{id}/dislike", s.dislikePost()).Methods("PATCH")

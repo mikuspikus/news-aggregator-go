@@ -56,6 +56,28 @@ func convertSingleComment(singleComment *comments.SingleComment) (*Comment, erro
 	return comment, nil
 }
 
+func (cc *CommentsClient) ListComments(ctx context.Context, news string, pageNumber, pageSize int) ([]Comment, int, error) {
+	response, err := cc.client.ListComments(ctx, &comments.ListCommentsRequest{
+		NewsUUID:   news,
+		PageNumber: int32(pageNumber),
+		PageSize:   int32(pageSize),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	comments := make([]Comment, len(response.Comments))
+	for idx, singleComment := range response.Comments {
+		comment, err := convertSingleComment(singleComment)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		comments[idx] = *comment
+	}
+
+	return comments, int(response.PageCount), nil
+}
+
 func (cc *CommentsClient) GetComment(ctx context.Context, id int32) (*Comment, error) {
 	commentsResponse, err := cc.client.GetComment(ctx, &comments.GetCommentRequest{
 		Id: id,
@@ -171,30 +193,17 @@ func (s *Server) getNewsComments() http.HandlerFunc {
 		vars := mux.Vars(r)
 		newsUUID := vars["news"]
 		ctx := r.Context()
-		grpcResponse, err := s.Comments.client.ListComments(ctx, &comments.ListCommentsRequest{
-			NewsUUID:   newsUUID,
-			PageNumber: int32(page),
-			PageSize:   int32(size),
-		})
+
+		comments, pageCount, err := s.Comments.ListComments(ctx, newsUUID, page, size)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
-		}
-		comments := make([]Comment, len(grpcResponse.Comments))
-		for idx, singleComment := range grpcResponse.Comments {
-			comment, err := convertSingleComment(singleComment)
-			if err != nil {
-				handleRPCErrors(w, err)
-				return
-			}
-
-			comments[idx] = *comment
 		}
 		httpResponse := Response{
 			Comments:   comments,
 			PageSize:   size,
 			PageNumber: page,
-			PagesCount: int(grpcResponse.PageCount),
+			PagesCount: pageCount,
 		}
 		json, err := json.Marshal(httpResponse)
 		if err != nil {
@@ -216,12 +225,7 @@ func (s *Server) getSingleComment() http.HandlerFunc {
 			return
 		}
 		ctx := r.Context()
-		grpcResponse, err := s.Comments.client.GetComment(ctx, &comments.GetCommentRequest{Id: int32(id)})
-		if err != nil {
-			handleRPCErrors(w, err)
-			return
-		}
-		comment, err := convertSingleComment(grpcResponse.Comment)
+		comment, err := s.Comments.GetComment(ctx, int32(id))
 		if err != nil {
 			handleRPCErrors(w, err)
 			return

@@ -6,6 +6,7 @@ import (
 	"github.com/mikuspikus/news-aggregator-go/pkg/tracer"
 	accounts "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	comments "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
+	news "github.com/mikuspikus/news-aggregator-go/services/news/proto"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/rs/cors"
 	"google.golang.org/grpc/codes"
@@ -28,6 +29,10 @@ type Config struct {
 	AccountsAppSecret string `env:"ACCOUNTS_APP_SECRET" envDefault:"AccountsAppSecret"`
 	AccountsAddr      string `env:"ACCOUNTS_ADDR"`
 
+	NewsAppID     string `env:"NEWS_APP_ID" envDefault:"CommentsAppID"`
+	NewsAppSecret string `env:"NEWS_APP_SECRET" envDefault:"CommentsAppSecret"`
+	NewsAddr      string `env:"NEWS_ADDR"`
+
 	Port          int    `env:"GATEWAY_PORT" envDefault:"3009"`
 	JaegerAddress string `env:"JAEGER_ADDRESS"`
 
@@ -35,6 +40,25 @@ type Config struct {
 	AllowedMethods   []string `env:"ALLOWED_METHODS" envDefault:"GET, POST, PATCH, DELETE, OPTIONS"`
 	AllowedHeaders   []string `env:"ALLOWED_HEADERS" envDefault:"Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Origin, Authorization"`
 	AllowCredentials bool     `env:"ALLOWED_CREDENTIALS" envDefault:"true"`
+}
+
+type NewsClient struct {
+	client    news.NewsClient
+	token     string
+	appID     string
+	appSECRET string
+}
+
+func (nc *NewsClient) UpdateToken() error {
+	token, err := nc.client.GetServiceToken(context.Background(), &news.GetServiceTokenRequest{
+		AppSECRET: nc.appSECRET,
+		AppID:     nc.appID,
+	})
+	if err != nil {
+		return err
+	}
+	nc.token = token.Token
+	return nil
 }
 
 type CommentsClient struct {
@@ -78,41 +102,49 @@ func (ac *AccountsClient) UpdateToken() error {
 }
 
 type Server struct {
-	Router   *tracer.TracedRouter
+	Router *tracer.TracedRouter
+
 	Comments *CommentsClient
 	Accounts *AccountsClient
+	News     *NewsClient
 }
 
-func New(cc comments.CommentsClient, ac accounts.AccountsClient, tr opentracing.Tracer) *Server {
+func New(cc comments.CommentsClient, ac accounts.AccountsClient, nc news.NewsClient, tr opentracing.Tracer, cfg Config) *Server {
 	return &Server{
 		Comments: &CommentsClient{
 			client:    cc,
 			token:     "",
-			appID:     "CommentsAppID",
-			appSECRET: "CommentsAppSecret",
+			appID:     cfg.CommentsAppID,
+			appSECRET: cfg.CommentsAppSecret,
 		},
 		Accounts: &AccountsClient{
 			client:    ac,
 			token:     "",
-			appID:     "AccountsAppID",
-			appSECRET: "AccountsAppSecret",
+			appID:     cfg.AccountsAppID,
+			appSECRET: cfg.AccountsAppSecret,
+		},
+		News: &NewsClient{
+			client:    nc,
+			token:     "",
+			appID:     cfg.NewsAppID,
+			appSECRET: cfg.NewsAppSecret,
 		},
 		Router: tracer.NewRouter(tr),
 	}
 }
 
-func (s *Server) Start(port int, AllowedOrigins, AllowedMethods, AllowedHeaders []string, AllowCredentials bool) {
+func (s *Server) Start(cfg Config) {
 	cors := cors.New(cors.Options{
-		AllowedOrigins:   AllowedOrigins,
-		AllowedMethods:   AllowedMethods,
-		AllowedHeaders:   AllowedHeaders,
-		AllowCredentials: AllowCredentials,
+		AllowedOrigins:   cfg.AllowedOrigins,
+		AllowedMethods:   cfg.AllowedMethods,
+		AllowedHeaders:   cfg.AllowedHeaders,
+		AllowCredentials: cfg.AllowCredentials,
 	})
 
 	s.Router.Mux.Use(setContentType)
 	s.routes()
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,

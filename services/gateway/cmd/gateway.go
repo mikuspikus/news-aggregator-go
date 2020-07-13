@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	news "github.com/mikuspikus/news-aggregator-go/services/news/proto"
 	"google.golang.org/grpc"
 	"log"
 
@@ -37,11 +38,17 @@ func main() {
 	}
 	defer accountsConnection.Close()
 	ac := accounts.NewAccountsClient(accountsConnection)
+	newsConnection, err := grpc.Dial(cfg.NewsAddr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer newsConnection.Close()
+	nc := news.NewNewsClient(newsConnection)
 
-	service := gateway.New(cc, ac, tracer)
+	service := gateway.New(cc, ac, nc, tracer, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	service.Start(cfg.Port, cfg.AllowedOrigins, cfg.AllowedMethods, cfg.AllowedHeaders, cfg.AllowCredentials)
+	service.Start(cfg)
 }
