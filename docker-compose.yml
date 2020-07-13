@@ -65,7 +65,7 @@ services:
   redis_accounts:
     build:
       context: .
-      dockerfile: services/comments/.redis/Dockerfile
+      dockerfile: services/accounts/.redis/Dockerfile
     expose:
       - 6379
 

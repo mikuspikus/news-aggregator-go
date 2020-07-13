@@ -4,8 +4,6 @@ import (
 
 	// Import the generated protobuf code
 	"context"
-	"log"
-
 	ststorage "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
 	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
@@ -77,8 +75,6 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 	default:
 		return nil, internalServerError(err)
 	}
-
-	return new(pb.GetServiceTokenResponse), nil
 }
 
 // DeleteComment deletes comment by ID
@@ -139,12 +135,11 @@ func (s *Service) EditComment(ctx context.Context, req *pb.EditCommentRequest) (
 func (s *Service) AddComment(ctx context.Context, req *pb.AddCommentRequest) (*pb.AddCommentResponse, error) {
 	valid, err := s.tokenStorage.CheckToken(req.Token)
 	if err != nil {
-		return nil, err
+		return nil, internalServerError(err)
 	}
 	if !valid {
 		return nil, statusInvalidToken
 	}
-	log.Print(req.NewsUUID)
 	newsUUID, err := uuid.Parse(req.NewsUUID)
 	if err != nil {
 		return nil, statusInvalidUUID

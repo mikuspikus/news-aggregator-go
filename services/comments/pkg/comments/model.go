@@ -75,14 +75,12 @@ func (db *db) List(pageNumber, pageSize int32, newsUUID uuid.UUID) ([]*Comment, 
 	comments := make([]*Comment, 0)
 	for rows.Next() {
 		comment := new(Comment)
-		var id int32
 		var userUUID, newsUUID string
 
-		err := rows.Scan(&id, &userUUID, &newsUUID, &comment.Body, &comment.Created, &comment.Edited)
+		err := rows.Scan(&comment.ID, &userUUID, &newsUUID, &comment.Body, &comment.Created, &comment.Edited)
 		if err != nil {
 			return nil, 0, err
 		}
-		comment.ID = id
 
 		comment.User, err = uuid.Parse(userUUID)
 		if err != nil {
@@ -116,11 +114,10 @@ func (db *db) Get(id int32) (*Comment, error) {
 	comment := new(Comment)
 	var userUUID, newsUUID string
 
-	err := row.Scan(&id, &userUUID, &newsUUID, &comment.Body, &comment.Created, &comment.Edited)
+	err := row.Scan(&comment.ID, &userUUID, &newsUUID, &comment.Body, &comment.Created, &comment.Edited)
 	if err != nil {
 		return nil, err
 	}
-	comment.ID = id
 	comment.User, err = uuid.Parse(userUUID)
 	if err != nil {
 		return nil, err
