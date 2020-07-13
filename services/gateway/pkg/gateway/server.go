@@ -18,6 +18,25 @@ import (
 	"time"
 )
 
+// Config contains env vars
+type Config struct {
+	CommentsAppID     string `env:"COMMENTS_APP_ID" envDefault:"CommentsAppID"`
+	CommentsAppSecret string `env:"COMMENTS_APP_SECRET" envDefault:"CommentsAppSecret"`
+	CommentsAddr      string `env:"COMMENTS_ADDR"`
+
+	AccountsAppID     string `env:"ACCOUNTS_APP_ID" envDefault:"AccountsAppID"`
+	AccountsAppSecret string `env:"ACCOUNTS_APP_SECRET" envDefault:"AccountsAppSecret"`
+	AccountsAddr      string `env:"ACCOUNTS_ADDR"`
+
+	Port          int    `env:"GATEWAY_PORT" envDefault:"3009"`
+	JaegerAddress string `env:"JAEGER_ADDRESS"`
+
+	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" envDefault:"http://localhost:8080, "`
+	AllowedMethods   []string `env:"ALLOWED_METHODS" envDefault:"GET, POST, PATCH, DELETE, OPTIONS"`
+	AllowedHeaders   []string `env:"ALLOWED_HEADERS" envDefault:"Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Origin, Authorization"`
+	AllowCredentials bool     `env:"ALLOWED_CREDENTIALS" envDefault:"true"`
+}
+
 type CommentsClient struct {
 	client    comments.CommentsClient
 	token     string
