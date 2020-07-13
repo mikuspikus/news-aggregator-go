@@ -57,14 +57,14 @@ type Service struct {
 	tokenStorage *ststorage.APITokenStorage
 }
 
-// GetToken returns new authorization token for appID and appSECRET
-func (s *Service) GetToken(ctx context.Context, req *pb.GetTokenRequest) (*pb.GetTokenResponse, error) {
+// GetServiceToken returns new authorization token for appID and appSECRET
+func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRequest) (*pb.GetServiceTokenResponse, error) {
 	appID, appSECRET := req.AppID, req.AppSECRET
 
 	token, err := s.tokenStorage.AddToken(appID, appSECRET)
 	switch err {
 	case nil:
-		response := new(pb.GetTokenResponse)
+		response := new(pb.GetServiceTokenResponse)
 		response.Token = token
 		return response, nil
 
@@ -78,7 +78,7 @@ func (s *Service) GetToken(ctx context.Context, req *pb.GetTokenRequest) (*pb.Ge
 		return nil, internalServerError(err)
 	}
 
-	return new(pb.GetTokenResponse), nil
+	return new(pb.GetServiceTokenResponse), nil
 }
 
 // DeleteComment deletes comment by ID

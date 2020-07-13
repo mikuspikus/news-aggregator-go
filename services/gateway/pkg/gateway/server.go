@@ -46,7 +46,7 @@ type CommentsClient struct {
 
 // UpdateToken requests new service-to-service token from [comments]
 func (cc *CommentsClient) UpdateToken() error {
-	token, err := cc.client.GetToken(context.Background(), &comments.GetTokenRequest{
+	token, err := cc.client.GetServiceToken(context.Background(), &comments.GetServiceTokenRequest{
 		AppSECRET: cc.appSECRET,
 		AppID:     cc.appID,
 	})

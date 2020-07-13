@@ -6,7 +6,7 @@ package comments;
 
 service Comments {
     // Generic methods
-    rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
+    rpc GetServiceToken(GetServiceTokenRequest) returns (GetServiceTokenResponse);
     // Service's methods
     // All
     rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse); // must be paged
@@ -20,12 +20,12 @@ service Comments {
     rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
 }
 // Generic methods
-message GetTokenRequest {
+message GetServiceTokenRequest {
     string appID = 1;
     string appSECRET = 2;
 }
 
-message GetTokenResponse{
+message GetServiceTokenResponse{
     string token = 1;
 }
 
