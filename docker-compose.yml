@@ -11,9 +11,11 @@ services:
       - 3009:3009
     restart: on-failure
     links:
+      - jaeger
       - psql_comments
       - redis_comments
     depends_on:
+      - jaeger
       - psql_comments
       - redis_comments
 
@@ -33,6 +35,19 @@ services:
       dockerfile: services/comments/.redis/Dockerfile
     expose:
       - 6379
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    expose:
+      - "14269"
+      - "5778"
+      - "14268"
+      - "14267"
+      - "5775/udp"
+      - "6831/udp"
+      - "6832/udp"
+    ports:
+      - 16686:16686
 
 volumes:
   psql_comments_volume:
