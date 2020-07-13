@@ -1,6 +1,39 @@
 version: "3.3"
 
 services:
+  psql_news:
+    image: postgres:12.0-alpine
+    expose:
+      - 5432
+    volumes:
+      - psql_news_volume:/var/lib/postgresql/data/
+      - ./services/news/sql/script.sql:/docker-entrypoint-initdb.d/init.sql
+    env_file:
+      - services/news/.env
+  redis_news:
+    build:
+      context: .
+      dockerfile: services/news/.redis/Dockerfile
+    expose:
+      - 6379
+  news:
+    build:
+      context: .
+      dockerfile: services/news/Dockerfile
+    env_file:
+      - services/news/.env
+    expose:
+      - 3009
+    restart: on-failure
+    links:
+      - jaeger
+      - psql_news
+      - redis_news
+    depends_on:
+      - jaeger
+      - psql_news
+      - redis_news
+
   accounts:
     build:
       context: .
@@ -85,10 +118,12 @@ services:
       - jaeger
       - comments
       - accounts
+      - news
     depends_on:
       - jaeger
       - comments
       - accounts
+      - news
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -106,3 +141,4 @@ services:
 volumes:
   psql_comments_volume:
   psql_accounts_volume:
+  psql_news_volume:

@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package news;
+
+service News {
+  rpc GetServiceToken(GetServiceTokenRequest) returns (GetServiceTokenResponse);
+
+  rpc ListNews(ListNewsRequest) returns (ListNewsResponse);
+  rpc GetNews(GetNewsRequest) returns (NewsResponse);
+  rpc AddNews(AddNewsRequest) returns (NewsResponse);
+  rpc EditNews(EditNewsRequest) returns (NewsResponse);
+  rpc DeleteNews(DeleteNewsRequest) returns (DeleteNewsResponse);
+}
+
+message GetServiceTokenRequest {
+  string appID = 1;
+  string appSECRET = 2;
+}
+
+message GetServiceTokenResponse {
+  string token = 1;
+}
+
+message ListNewsRequest {
+  int32 pageSize = 1;
+  int32 pageNumber = 2;
+}
+
+message SingleNews {
+  string uid = 1;
+  string userUUID = 2;
+  string title = 3;
+  string uri = 4;
+  google.protobuf.Timestamp created = 6;
+  google.protobuf.Timestamp edited = 7;
+}
+
+message ListNewsResponse {
+  repeated SingleNews news = 1;
+  int32 pageSize = 2;
+  int32 pageNumber = 3;
+  int32 pageCount = 4;
+}
+
+message NewsResponse {
+  SingleNews news = 1;
+}
+
+message GetNewsRequest {
+  string uid = 1;
+}
+
+message AddNewsRequest {
+  string token = 1;
+  string userUUID = 2;
+  string title = 3;
+  string uri = 4;
+}
+
+message EditNewsRequest {
+  string token = 1;
+  string uid = 2;
+  string title = 3;
+  string uri = 4;
+}
+
+message DeleteNewsRequest {
+  string token = 1;
+  string uid = 2;
+}
+
+message DeleteNewsResponse {
+
+}
