@@ -21,9 +21,10 @@ func NewTracer(serviceName, host string) (opentracing.Tracer, io.Closer, error) 
 			BufferFlushInterval: 1 * time.Second,
 			LocalAgentHostPort:  host,
 		},
+		ServiceName: serviceName,
 	}
 
-	tracer, closer, err := jcfg.New(serviceName)
+	tracer, closer, err := jcfg.NewTracer()
 	if err != nil {
 		return nil, nil, fmt.Errorf("new tracer error: %v", err)
 	}
