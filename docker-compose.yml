@@ -1,14 +1,49 @@
 version: "3.3"
 
 services:
+  accounts:
+    build:
+      context: .
+      dockerfile: services/accounts/Dockerfile
+    env_file:
+      - services/accounts/.env
+    expose:
+      - 3009
+    restart: on-failure
+    links:
+      - jaeger
+      - psql_accounts
+      - redis_accounts
+    depends_on:
+      - jaeger
+      - psql_accounts
+      - redis_accounts
+
+  psql_accounts:
+    image: postgres:12.0-alpine
+    expose:
+      - 5432
+    volumes:
+      - psql_accounts_volume:/var/lib/postgresql/data/
+      - ./services/accounts/sql/script.sql:/docker-entrypoint-initdb.d/init.sql
+    env_file:
+      - services/accounts/.env
+
+  redis_accounts:
+    build:
+      context: .
+      dockerfile: services/comments/.redis/Dockerfile
+    expose:
+      - 6379
+
   comments:
     build:
       context: .
       dockerfile: services/comments/Dockerfile
     env_file:
       - services/comments/.env
-    ports:
-      - 3009:3009
+    expose:
+      - 3009
     restart: on-failure
     links:
       - jaeger
@@ -35,6 +70,25 @@ services:
       dockerfile: services/comments/.redis/Dockerfile
     expose:
       - 6379
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    env_file:
+      - services/gateway/.env
+    ports:
+      - 8080:8080
+    expose:
+      - 8080
+    restart: on-failure
+    links:
+      - jaeger
+      - comments
+      - accounts
+    depends_on:
+      - jaeger
+      - comments
+      - accounts
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -51,3 +105,4 @@ services:
 
 volumes:
   psql_comments_volume:
+  psql_accounts_volume:

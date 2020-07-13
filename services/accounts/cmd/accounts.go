@@ -11,9 +11,9 @@ import (
 
 // Config contains env vars
 type Config struct {
-	AppID         string `env:"COMMENTS_APP_ID" envDefault:"AccountsAppID"`
-	AppSecret     string `env:"COMMENTS_APP_SECRET" envDefault:"AccountsAppSecret"`
-	Port          int    `env:"COMMENTS_PORT" envDefault:"3009"`
+	AppID         string `env:"ACCOUNTS_APP_ID" envDefault:"AccountsAppID"`
+	AppSecret     string `env:"ACCOUNTS_APP_SECRET" envDefault:"AccountsAppSecret"`
+	Port          int    `env:"ACCOUNTS_PORT" envDefault:"3009"`
 	JaegerAddress string `env:"JAEGER_ADDRESS"`
 	DbHost        string `env:"DB_HOST" envDefault:"localhost"`
 	DbPort        int    `env:"DB_PORT" envDefault:"5432"`
