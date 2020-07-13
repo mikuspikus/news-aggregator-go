@@ -18,13 +18,6 @@ import (
 	"time"
 )
 
-type Config struct {
-	AllowedOrigins   []string //{"http://localhost:8081"}
-	AllowedMethods   []string //{"GET", "POST", "PATCH", "DELETE", "OPTIONS"}
-	AllowedHeaders   []string //{"Origin", "X-Requested-With", "Content-Type", "Accept", "Access-Control-Allow-Origin", "Authorization"}
-	AllowCredentials bool     // true
-}
-
 type CommentsClient struct {
 	client    comments.CommentsClient
 	token     string
@@ -89,12 +82,12 @@ func New(cc comments.CommentsClient, ac accounts.AccountsClient, tr opentracing.
 	}
 }
 
-func (s *Server) Start(port int, cfg Config) {
+func (s *Server) Start(port int, AllowedOrigins, AllowedMethods, AllowedHeaders []string, AllowCredentials bool) {
 	cors := cors.New(cors.Options{
-		AllowedOrigins:   cfg.AllowedOrigins,
-		AllowedMethods:   cfg.AllowedMethods,
-		AllowedHeaders:   cfg.AllowedHeaders,
-		AllowCredentials: cfg.AllowCredentials,
+		AllowedOrigins:   AllowedOrigins,
+		AllowedMethods:   AllowedMethods,
+		AllowedHeaders:   AllowedHeaders,
+		AllowCredentials: AllowCredentials,
 	})
 
 	s.Router.Mux.Use(setContentType)
@@ -115,6 +108,7 @@ func (s *Server) Start(port int, cfg Config) {
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
+	<-ch
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 	server.Shutdown(ctx)
