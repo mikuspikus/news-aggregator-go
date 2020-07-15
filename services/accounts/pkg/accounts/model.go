@@ -26,6 +26,7 @@ type User struct {
 	Username string
 	Created  time.Time
 	Edited   time.Time
+	IsAdmin  bool
 }
 
 type DataStoreHandler interface {
@@ -61,10 +62,10 @@ func checkPassword(pwd, hashedPwd string) bool {
 }
 
 func (db *db) Get(uid uuid.UUID) (*User, error) {
-	query := "select username, created_at, edited_at from users where uid=$1"
+	query := "select username, created_at, edited_at, is_admin from users where uid=$1"
 	user := new(User)
 	user.Uid = uid
-	err := db.QueryRow(context.Background(), query, uid.String()).Scan(&user.Username, &user.Created, &user.Edited)
+	err := db.QueryRow(context.Background(), query, uid.String()).Scan(&user.Username, &user.Created, &user.Edited, &user.IsAdmin)
 	switch err {
 	case nil:
 		return user, nil
@@ -108,7 +109,7 @@ func (db *db) Create(username, password string) (*User, error) {
 }
 
 func (db *db) Update(uid uuid.UUID, username, password string) (*User, error) {
-	query := "update comments set username=$1 password_hash=$2 edited_at=$3 where uid=$4 returning created_at"
+	query := "update comments set username=$1 password_hash=$2 edited_at=$3 where uid=$4 returning created_at, is_admin"
 
 	user := new(User)
 	now := time.Now()
@@ -121,7 +122,7 @@ func (db *db) Update(uid uuid.UUID, username, password string) (*User, error) {
 	user.Username = username
 	user.Edited = now
 
-	err = db.QueryRow(context.Background(), query, username, hashedPwd, now).Scan(&user.Created)
+	err = db.QueryRow(context.Background(), query, username, hashedPwd, now).Scan(&user.Created, &user.IsAdmin)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +157,10 @@ func (db *db) CheckPassword(uid uuid.UUID, password string) (bool, error) {
 }
 
 func (db *db) GetUserByUsername(username string) (*User, error) {
-	query := "select uid, created_at, edited_at from users where username=$1"
+	query := "select uid, created_at, edited_at, is_admin from users where username=$1"
 	user := new(User)
 	var struid string
-	err := db.QueryRow(context.Background(), query, username).Scan(&struid, &user.Created, &user.Edited)
+	err := db.QueryRow(context.Background(), query, username).Scan(&struid, &user.Created, &user.Edited, &user.IsAdmin)
 	switch err {
 	case nil:
 		uid, err := uuid.Parse(struid)

@@ -28,6 +28,7 @@ message UserInfo {
   string username = 2;
   google.protobuf.Timestamp created = 3;
   google.protobuf.Timestamp edited = 4;
+  bool isAdmin = 5;
 }
 message AddUserRequest {
   string apiToken = 1;

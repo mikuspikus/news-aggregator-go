@@ -18,6 +18,7 @@ type User struct {
 	Username string
 	Created  time.Time
 	Edited   time.Time
+	IsAdmin  bool
 }
 
 // convertUserInfo converts accounts.UserInfo into User
@@ -26,6 +27,7 @@ func convertUserInfo(userInfo *accounts.UserInfo) (*User, error) {
 	var err error
 	user.UID = userInfo.Uid
 	user.Username = userInfo.Username
+	user.IsAdmin = userInfo.IsAdmin
 	user.Created, err = ptypes.Timestamp(userInfo.Created)
 	if err != nil {
 		return nil, err
