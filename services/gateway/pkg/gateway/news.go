@@ -79,7 +79,7 @@ func (nc *NewsClient) AddNews(ctx context.Context, user, title, uri string) (*Ne
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = nc.UpdateToken()
+			err = nc.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -108,7 +108,7 @@ func (nc *NewsClient) UpdateNews(ctx context.Context, uid, title, uri string) (*
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = nc.UpdateToken()
+			err = nc.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -135,7 +135,7 @@ func (nc *NewsClient) DeleteNews(ctx context.Context, uid string) error {
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = nc.UpdateToken()
+			err = nc.UpdateToken(ctx)
 			if err != nil {
 				return err
 			}
@@ -155,10 +155,10 @@ func (nc *NewsClient) DeleteNews(ctx context.Context, uid string) error {
 
 func (s *Server) getNews() http.HandlerFunc {
 	type Response struct {
-		News       []News
-		PageSize   int
-		PageNumber int
-		PageCount  int
+		News       []News `json:"news"`
+		PageSize   int    `json:"page_size"`
+		PageNumber int    `json:"page_number"`
+		PageCount  int    `json:"page_count"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("number")

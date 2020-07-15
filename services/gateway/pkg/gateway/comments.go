@@ -97,7 +97,7 @@ func (cc *CommentsClient) AddComment(ctx context.Context, body, userUUID, newsUU
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = cc.UpdateToken()
+			err = cc.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -124,7 +124,7 @@ func (cc *CommentsClient) UpdateComment(ctx context.Context, body string) (*Comm
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = cc.UpdateToken()
+			err = cc.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -149,7 +149,7 @@ func (cc *CommentsClient) DeleteComment(ctx context.Context, id int32) error {
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = cc.UpdateToken()
+			err = cc.UpdateToken(ctx)
 			if err != nil {
 				return err
 			}

@@ -46,7 +46,7 @@ func (ac *AccountsClient) GetUserByToken(ctx context.Context, userToken string) 
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = ac.UpdateToken()
+			err = ac.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -81,7 +81,7 @@ func (ac *AccountsClient) AddUser(ctx context.Context, username, password string
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = ac.UpdateToken()
+			err = ac.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -108,7 +108,7 @@ func (ac *AccountsClient) EditUser(ctx context.Context, username, password strin
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = ac.UpdateToken()
+			err = ac.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -134,7 +134,7 @@ func (ac *AccountsClient) DeleteUser(ctx context.Context, userUUID string) error
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = ac.UpdateToken()
+			err = ac.UpdateToken(ctx)
 			if err != nil {
 				return err
 			}
@@ -161,7 +161,7 @@ func (ac *AccountsClient) GetUserToken(ctx context.Context, username, password s
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = ac.UpdateToken()
+			err = ac.UpdateToken(ctx)
 			if err != nil {
 				return "", "", err
 			}
@@ -189,7 +189,7 @@ func (ac *AccountsClient) RefreshUserToken(ctx context.Context, token, refreshTo
 	})
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
-			err = ac.UpdateToken()
+			err = ac.UpdateToken(ctx)
 			if err != nil {
 				return "", "", err
 			}
