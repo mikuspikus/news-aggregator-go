@@ -28,6 +28,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer service.Close()
 
 	service.Start(cfg.Port, tracer)
 }

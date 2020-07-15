@@ -30,6 +30,7 @@ type DataStoreHandler interface {
 	Create(user uuid.UUID, title string, uri url.URL) (*News, error)
 	Update(uid uuid.UUID, title string, uri url.URL) (*News, error)
 	Delete(uid uuid.UUID) error
+	Close()
 }
 
 type db struct {

@@ -35,6 +35,7 @@ type DataStoreHandler interface {
 	Delete(uid uuid.UUID) error
 	CheckPassword(uid uuid.UUID, password string) (bool, error)
 	GetUserByUsername(username string) (*User, error)
+	Close()
 }
 
 type db struct {

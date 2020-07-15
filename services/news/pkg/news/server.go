@@ -51,6 +51,10 @@ func (s *Service) Start(port int, tracer opentracing.Tracer) error {
 	return server.Serve(listener)
 }
 
+func (s *Service) Close() {
+	s.db.Close()
+}
+
 func NewDataStore(connString string) (DataStoreHandler, error) {
 	return newDB(connString)
 }

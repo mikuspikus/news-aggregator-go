@@ -32,6 +32,7 @@ type DataStoreHandler interface {
 	Create(uuid.UUID, uuid.UUID, string) (*Comment, error)
 	Update(int32, string) (*Comment, error)
 	Delete(int32) error
+	Close()
 }
 
 type db struct {
