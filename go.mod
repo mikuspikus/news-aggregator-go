@@ -15,6 +15,7 @@ require (
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/rs/cors v1.7.0
+	github.com/segmentio/kafka-go v0.3.7
 	github.com/uber/jaeger-client-go v2.24.0+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
