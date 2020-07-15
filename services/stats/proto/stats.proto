@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package stats;
+
+service Stats {
+  rpc GetServiceToken(GetServiceTokenRequest) returns (GetServiceTokenResponse);
+
+  rpc ListAccountsStats(ListStatsRequest) returns (ListStatsResponse);
+  rpc AddAccountsStats(AddStatsRequest) returns (StatsResponse);
+
+  rpc ListNewsStats(ListStatsRequest) returns (ListStatsResponse);
+  rpc AddNewsStats(AddStatsRequest) returns (StatsResponse);
+
+  rpc ListCommentsStats(ListStatsRequest) returns (ListStatsResponse);
+  rpc AddCommentsStats(AddStatsRequest) returns (StatsResponse);
+}
+
+message GetServiceTokenRequest {
+  string appID = 1;
+  string appSECRET = 2;
+}
+
+message GetServiceTokenResponse {
+  string token = 1;
+}
+
+message SingleStat {
+  int32 id = 1;
+  string userUID = 2;
+  string action = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  bytes input = 5;
+  bytes output = 6;
+}
+
+message ListStatsRequest {
+  int32 pageSize = 1;
+  int32 pageNumber = 2;
+  string token = 3;
+}
+
+message ListStatsResponse {
+  repeated SingleStat stats = 1;
+  int32 pageSize = 2;
+  int32 pageNumber = 3;
+  int32 pageCount = 4;
+  string token = 5;
+}
+
+message AddStatsRequest {
+  string userUID = 1;
+  string action = 2;
+  bytes input = 3;
+  bytes output = 4;
+  string token = 5;
+}
+
+message StatsResponse {
+  SingleStat Stats = 1;
+}
