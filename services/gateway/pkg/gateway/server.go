@@ -7,6 +7,7 @@ import (
 	accounts "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	comments "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 	news "github.com/mikuspikus/news-aggregator-go/services/news/proto"
+	stats "github.com/mikuspikus/news-aggregator-go/services/stats/proto"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/rs/cors"
 	"google.golang.org/grpc/codes"
@@ -33,6 +34,10 @@ type Config struct {
 	NewsAppSecret string `env:"NEWS_APP_SECRET" envDefault:"CommentsAppSecret"`
 	NewsAddr      string `env:"NEWS_ADDR"`
 
+	StatsAppID     string `env:"STATS_APP_ID" envDefault:"StatsAppID"`
+	StatsAppSecret string `env:"STATS_APP_SECRET" envDefault:"StatsAppSecret"`
+	StatsAddr      string `env:"STATS_ADDR"`
+
 	Port          int    `env:"GATEWAY_PORT" envDefault:"3009"`
 	JaegerAddress string `env:"JAEGER_ADDRESS"`
 
@@ -42,6 +47,25 @@ type Config struct {
 	AllowCredentials bool     `env:"ALLOWED_CREDENTIALS" envDefault:"true"`
 }
 
+type StatsClient struct {
+	client    stats.StatsClient
+	token     string
+	appID     string
+	appSECRET string
+}
+
+func (sc *StatsClient) UpdateToken(ctx context.Context) error {
+	token, err := sc.client.GetServiceToken(ctx, &stats.GetServiceTokenRequest{
+		AppID:     sc.appID,
+		AppSECRET: sc.appSECRET,
+	})
+	if err != nil {
+		return err
+	}
+	sc.token = token.Token
+	return nil
+}
+
 type NewsClient struct {
 	client    news.NewsClient
 	token     string
@@ -49,8 +73,8 @@ type NewsClient struct {
 	appSECRET string
 }
 
-func (nc *NewsClient) UpdateToken() error {
-	token, err := nc.client.GetServiceToken(context.Background(), &news.GetServiceTokenRequest{
+func (nc *NewsClient) UpdateToken(ctx context.Context) error {
+	token, err := nc.client.GetServiceToken(ctx, &news.GetServiceTokenRequest{
 		AppSECRET: nc.appSECRET,
 		AppID:     nc.appID,
 	})
@@ -69,8 +93,8 @@ type CommentsClient struct {
 }
 
 // UpdateToken requests new service-to-service token from [comments]
-func (cc *CommentsClient) UpdateToken() error {
-	token, err := cc.client.GetServiceToken(context.Background(), &comments.GetServiceTokenRequest{
+func (cc *CommentsClient) UpdateToken(ctx context.Context) error {
+	token, err := cc.client.GetServiceToken(ctx, &comments.GetServiceTokenRequest{
 		AppSECRET: cc.appSECRET,
 		AppID:     cc.appID,
 	})
@@ -89,8 +113,8 @@ type AccountsClient struct {
 }
 
 // UpdateToken requests new service-to-service token from [comments]
-func (ac *AccountsClient) UpdateToken() error {
-	token, err := ac.client.GetServiceToken(context.Background(), &accounts.GetServiceTokenRequest{
+func (ac *AccountsClient) UpdateToken(ctx context.Context) error {
+	token, err := ac.client.GetServiceToken(ctx, &accounts.GetServiceTokenRequest{
 		AppSECRET: ac.appSECRET,
 		AppID:     ac.appID,
 	})
@@ -107,9 +131,10 @@ type Server struct {
 	Comments *CommentsClient
 	Accounts *AccountsClient
 	News     *NewsClient
+	Stats    *StatsClient
 }
 
-func New(cc comments.CommentsClient, ac accounts.AccountsClient, nc news.NewsClient, tr opentracing.Tracer, cfg Config) *Server {
+func New(cc comments.CommentsClient, ac accounts.AccountsClient, nc news.NewsClient, sc stats.StatsClient, tr opentracing.Tracer, cfg Config) *Server {
 	return &Server{
 		Comments: &CommentsClient{
 			client:    cc,
@@ -128,6 +153,12 @@ func New(cc comments.CommentsClient, ac accounts.AccountsClient, nc news.NewsCli
 			token:     "",
 			appID:     cfg.NewsAppID,
 			appSECRET: cfg.NewsAppSecret,
+		},
+		Stats: &StatsClient{
+			client:    sc,
+			token:     "",
+			appID:     cfg.StatsAppID,
+			appSECRET: cfg.StatsAppSecret,
 		},
 		Router: tracer.NewRouter(tr),
 	}
