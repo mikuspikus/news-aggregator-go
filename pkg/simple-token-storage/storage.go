@@ -3,6 +3,7 @@ package simple_token_storage
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
@@ -10,8 +11,9 @@ import (
 )
 
 var (
-	ErrIDNotFound  = errors.New("app with ID not found")
-	ErrWrongSecret = errors.New("invalid secret")
+	ErrIDNotFound    = errors.New("app with ID not found")
+	ErrWrongSecret   = errors.New("invalid secret")
+	ErrTokenNotFound = errors.New("token not found")
 )
 
 const DefaultExpirationTime = time.Minute * 30
@@ -52,6 +54,7 @@ func (storage *APITokenStorage) AddToken(appID, appSECRET string) (string, error
 	token := generateToken()
 	_, err := storage.redis.Set(context.Background(), token, true, DefaultExpirationTime).Result()
 	if err != nil {
+		log.Println(err)
 		return "", err
 	}
 	return token, nil
@@ -59,5 +62,10 @@ func (storage *APITokenStorage) AddToken(appID, appSECRET string) (string, error
 
 func (storage *APITokenStorage) CheckToken(token string) (bool, error) {
 	exists, err := storage.redis.Get(context.Background(), token).Result()
-	return exists == "1", err
+	if err == redis.Nil {
+		return false, ErrTokenNotFound
+	} else if err != nil {
+		return false, err
+	}
+	return exists == "1", nil
 }
