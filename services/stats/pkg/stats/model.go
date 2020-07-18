@@ -24,7 +24,7 @@ type Stats struct {
 	Output    Attrs
 }
 
-type Attrs map[string]string
+type Attrs map[string]interface{}
 
 func newDB(connstring string) (*db, error) {
 	dbpool, err := pgxpool.Connect(context.Background(), connstring)
@@ -97,12 +97,13 @@ func (db *db) listStats(viewName string, pageNumber, pageSize int32) (stats_s []
 	return stats_s, pageCount, err
 }
 
-func (db *db) addStats(tableName string, user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
+func (db *db) addStats(tableName string, user uuid.UUID, action string, input, output Attrs) (*Stats, error) {
 	queryTemplate := "insert into %s (user_uid, action, timestamp, input, output) " +
 		"values ($1, $2, $3, $4, $5) returning id"
 
 	query := fmt.Sprintf(queryTemplate, tableName)
 	now := time.Now()
+	stats := new(Stats)
 	var id int32
 	binput, err := json.Marshal(input)
 	if err != nil {

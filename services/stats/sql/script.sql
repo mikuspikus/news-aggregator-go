@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE table accounts (
     id SERIAL PRIMARY KEY,
     user_uid UUID not null,
+    action text,
     timestamp timestamp with time zone not null,
     input json,
     output json
@@ -14,6 +15,7 @@ create view accounts_view as
 create table news (
     id SERIAL PRIMARY KEY,
     user_uid UUID not null,
+    action text,
     timestamp timestamp with time zone not null,
     input json,
     output json
@@ -24,6 +26,7 @@ create view news_view as
 create table comments (
     id SERIAL PRIMARY KEY,
     user_uid UUID not null,
+    action text,
     timestamp timestamp with time zone not null,
     input json,
     output json
