@@ -16,7 +16,7 @@ type KafkaReader struct {
 	*kafka.Reader
 }
 
-func NewReader(brokerUrls []string, clientId, topic, consumerGroup string) *KafkaReader {
+func NewReader(brokerUrls []string, clientId, topic string) *KafkaReader {
 	dialer := &kafka.Dialer{
 		ClientID: clientId,
 		Timeout:  kafkaDialerDefaultTimeOut,
