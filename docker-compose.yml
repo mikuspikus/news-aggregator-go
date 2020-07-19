@@ -196,11 +196,13 @@ services:
       - comments
       - accounts
       - news
+      - kafka
     depends_on:
       - jaeger
       - comments
       - accounts
       - news
+      - kafka
 
   jaeger:
     image: jaegertracing/all-in-one:latest
