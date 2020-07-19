@@ -4,23 +4,27 @@ import (
 	"context"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
-	ststorage "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
-	rtstorage "github.com/mikuspikus/news-aggregator-go/services/accounts/pkg/refresh-token-storage"
-	utstorage "github.com/mikuspikus/news-aggregator-go/services/accounts/pkg/user-token-storage"
+	stst "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
+	rtst "github.com/mikuspikus/news-aggregator-go/services/accounts/pkg/refresh-token-storage"
+	utst "github.com/mikuspikus/news-aggregator-go/services/accounts/pkg/user-token-storage"
 	pb "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	statusInvalidUUID            = status.Error(codes.InvalidArgument, "invalid UUID")
-	statusNotFound               = status.Error(codes.NotFound, "not found by UUID")
-	statusAppIDNotFound          = status.Error(codes.NotFound, "app ID not found")
-	statusInvalidSecret          = status.Error(codes.InvalidArgument, "invalid secret")
+	statusInvalidUUID         = status.Error(codes.InvalidArgument, "invalid UUID")
+	statusInvalidToken        = status.Error(codes.InvalidArgument, "invalid token")
+	statusInvalidRefreshToken = status.Error(codes.InvalidArgument, "invalid refresh token")
+	statusInvalidSecret       = status.Error(codes.InvalidArgument, "invalid secret")
+
 	statusInvalidServiceToken    = status.Error(codes.Unauthenticated, "invalid service token")
 	statusInvalidUserCredentials = status.Error(codes.Unauthenticated, "invalid username or password")
-	statusInvalidToken           = status.Error(codes.InvalidArgument, "invalid token")
-	statusInvalidRefreshToken    = status.Error(codes.InvalidArgument, "invalid refresh token")
+	statusServiceTokenNotFound   = status.Error(codes.Unauthenticated, "service token not found")
+
+	statusNotFoundByUUID      = status.Error(codes.NotFound, "not found by UUID")
+	statusUserNotFoundByToken = status.Error(codes.NotFound, "user not found by token")
+	statusAppIDNotFound       = status.Error(codes.NotFound, "app ID not found")
 )
 
 func internalServerError(err error) error {
@@ -46,6 +50,20 @@ func (user *User) UserInfo() (*pb.UserInfo, error) {
 	return userinfo, nil
 }
 
+func (s *Service) validateServiceToken(token string) error {
+	valid, err := s.ServiceTokens.CheckToken(token)
+	if err == stst.ErrTokenNotFound {
+		return statusServiceTokenNotFound
+	}
+	if err != nil {
+		return internalServerError(err)
+	}
+	if !valid {
+		return statusInvalidServiceToken
+	}
+	return nil
+}
+
 func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.UserInfo, error) {
 	uid, err := uuid.Parse(req.Uid)
 	if err != nil {
@@ -64,7 +82,7 @@ func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.User
 	return response, nil
 }
 
-func (s *Service) CreateTokens(uid uuid.UUID) (string, string, error) {
+func (s *Service) createUserTokens(uid uuid.UUID) (string, string, error) {
 	token, err := s.UserTokens.Add(uid)
 	if err != nil {
 		return "", "", err
@@ -78,14 +96,11 @@ func (s *Service) CreateTokens(uid uuid.UUID) (string, string, error) {
 }
 
 func (s *Service) AddUser(ctx context.Context, req *pb.AddUserRequest) (*pb.UserInfo, error) {
-	apiToken := req.ApiToken
-	valid, err := s.ServiceTokens.CheckToken(apiToken)
-	if err != nil {
-		return nil, err
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
 	}
-	if !valid {
-		return nil, statusInvalidServiceToken
-	}
+
 	username := req.Username
 	password := req.Password
 
@@ -101,14 +116,11 @@ func (s *Service) AddUser(ctx context.Context, req *pb.AddUserRequest) (*pb.User
 }
 
 func (s *Service) EditUser(ctx context.Context, req *pb.EditUserRequest) (*pb.UserInfo, error) {
-	apiToken := req.ApiToken
-	valid, err := s.ServiceTokens.CheckToken(apiToken)
-	if err != nil {
-		return nil, err
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
 	}
-	if !valid {
-		return nil, statusInvalidServiceToken
-	}
+
 	uid, err := uuid.Parse(req.Uid)
 	if err != nil {
 		return nil, statusInvalidUUID
@@ -130,14 +142,11 @@ func (s *Service) EditUser(ctx context.Context, req *pb.EditUserRequest) (*pb.Us
 }
 
 func (s *Service) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
-	apiToken := req.ApiToken
-	valid, err := s.ServiceTokens.CheckToken(apiToken)
-	if err != nil {
-		return nil, err
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
 	}
-	if !valid {
-		return nil, statusInvalidServiceToken
-	}
+
 	uid, err := uuid.Parse(req.Uid)
 	if err != nil {
 		return nil, statusInvalidUUID
@@ -149,7 +158,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest) (*p
 	case nil:
 		return new(pb.DeleteUserResponse), nil
 	case errNotFound:
-		return nil, statusNotFound
+		return nil, statusNotFoundByUUID
 	default:
 		return nil, internalServerError(err)
 	}
@@ -165,10 +174,10 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 		response.Token = token
 		return response, nil
 
-	case ststorage.ErrIDNotFound:
+	case stst.ErrIDNotFound:
 		return nil, statusAppIDNotFound
 
-	case ststorage.ErrWrongSecret:
+	case stst.ErrWrongSecret:
 		return nil, statusInvalidSecret
 
 	default:
@@ -177,25 +186,21 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 }
 
 func (s *Service) GetUserToken(ctx context.Context, req *pb.GetUserTokenRequest) (*pb.UserTokenResponse, error) {
-	apiToken := req.ApiToken
-	valid, err := s.ServiceTokens.CheckToken(apiToken)
-	if err != nil {
-		return nil, err
-	}
-	if !valid {
-		return nil, statusInvalidServiceToken
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
 	}
 
 	username, password := req.Username, req.Password
 	user, err := s.Store.GetUserByUsername(username)
 	if err == errNotFound {
-		return nil, statusNotFound
+		return nil, statusNotFoundByUUID
 	} else if err != nil {
 		return nil, internalServerError(err)
 	}
-	valid, err = s.Store.CheckPassword(user.Uid, password)
+	valid, err := s.Store.CheckPassword(user.Uid, password)
 	if err == errNotFound {
-		return nil, statusNotFound
+		return nil, statusNotFoundByUUID
 	} else if err != nil {
 		return nil, err
 	}
@@ -203,7 +208,7 @@ func (s *Service) GetUserToken(ctx context.Context, req *pb.GetUserTokenRequest)
 		return nil, statusInvalidUserCredentials
 	}
 
-	token, refreshToken, err := s.CreateTokens(user.Uid)
+	token, refreshToken, err := s.createUserTokens(user.Uid)
 	if err != nil {
 		return nil, internalServerError(err)
 	}
@@ -216,18 +221,14 @@ func (s *Service) GetUserToken(ctx context.Context, req *pb.GetUserTokenRequest)
 }
 
 func (s *Service) RefreshUserToken(ctx context.Context, req *pb.RefreshUserTokenRequest) (*pb.UserTokenResponse, error) {
-	apiToken := req.ApiToken
-	valid, err := s.ServiceTokens.CheckToken(apiToken)
-	if err != nil {
-		return nil, err
-	}
-	if !valid {
-		return nil, statusInvalidServiceToken
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
 	}
 
 	token, refreshToken := req.Token, req.RefreshToken
-	valid, err = s.RefreshTokens.Check(token, refreshToken)
-	if err == rtstorage.ErrNotFound {
+	valid, err := s.RefreshTokens.Check(token, refreshToken)
+	if err == rtst.ErrTokenNotFound {
 		return nil, statusInvalidRefreshToken
 	} else if err != nil {
 		return nil, internalServerError(err)
@@ -250,7 +251,7 @@ func (s *Service) RefreshUserToken(ctx context.Context, req *pb.RefreshUserToken
 		return nil, internalServerError(err)
 	}
 
-	token, refreshToken, err = s.CreateTokens(uid)
+	token, refreshToken, err = s.createUserTokens(uid)
 	if err != nil {
 		return nil, internalServerError(err)
 	}
@@ -263,13 +264,9 @@ func (s *Service) RefreshUserToken(ctx context.Context, req *pb.RefreshUserToken
 }
 
 func (s *Service) GetUserByToken(ctx context.Context, req *pb.GetUserByTokenRequest) (*pb.UserInfo, error) {
-	apiToken := req.ApiToken
-	valid, err := s.ServiceTokens.CheckToken(apiToken)
-	if err != nil {
-		return nil, err
-	}
-	if !valid {
-		return nil, statusInvalidServiceToken
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
 	}
 
 	token := req.UserToken

@@ -8,17 +8,19 @@ import (
 	"google.golang.org/grpc/status"
 	"net/url"
 
-	ststorage "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
+	stst "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
 	pb "github.com/mikuspikus/news-aggregator-go/services/news/proto"
 )
 
 var (
-	statusInvalidUUID   = status.Error(codes.InvalidArgument, "invalid UUID")
-	statusInvalidURI    = status.Error(codes.InvalidArgument, "invalid URI")
-	statusNotFound      = status.Error(codes.NotFound, "news not found")
-	statusInvalidToken  = status.Error(codes.Unauthenticated, "invalid token")
-	statusAppIDNotFound = status.Error(codes.NotFound, "app ID not found")
-	statusInvalidSecret = status.Error(codes.InvalidArgument, "invalid secret")
+	statusServiceTokenNotFound = status.Error(codes.Unauthenticated, "service token not found")
+	statusInvalidServiceToken  = status.Error(codes.Unauthenticated, "invalid service token")
+	statusInvalidUUID          = status.Error(codes.InvalidArgument, "invalid UUID")
+	statusInvalidURI           = status.Error(codes.InvalidArgument, "invalid URI")
+	statusNotFound             = status.Error(codes.NotFound, "news not found")
+	statusInvalidToken         = status.Error(codes.Unauthenticated, "invalid token")
+	statusAppIDNotFound        = status.Error(codes.NotFound, "app ID not found")
+	statusInvalidSecret        = status.Error(codes.InvalidArgument, "invalid secret")
 )
 
 func internalServerError(err error) error {
@@ -48,7 +50,21 @@ func (news *News) SingleNews() (*pb.SingleNews, error) {
 
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *ststorage.APITokenStorage
+	tokenStorage *stst.APITokenStorage
+}
+
+func (s *Service) validateServiceToken(token string) error {
+	valid, err := s.tokenStorage.CheckToken(token)
+	if err == stst.ErrTokenNotFound {
+		return statusServiceTokenNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if !valid {
+		return statusInvalidServiceToken
+	}
+	return nil
 }
 
 func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRequest) (*pb.GetServiceTokenResponse, error) {
@@ -59,9 +75,9 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 		response := new(pb.GetServiceTokenResponse)
 		response.Token = token
 		return response, nil
-	case ststorage.ErrIDNotFound:
+	case stst.ErrIDNotFound:
 		return nil, statusAppIDNotFound
-	case ststorage.ErrWrongSecret:
+	case stst.ErrWrongSecret:
 		return nil, statusInvalidSecret
 	default:
 		return nil, internalServerError(err)
@@ -117,12 +133,9 @@ func (s *Service) GetNews(ctx context.Context, req *pb.GetNewsRequest) (*pb.News
 }
 
 func (s *Service) AddNews(ctx context.Context, req *pb.AddNewsRequest) (*pb.NewsResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	if !valid {
-		return nil, statusInvalidToken
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
 
 	user, err := uuid.Parse(req.UserUUID)
@@ -147,12 +160,9 @@ func (s *Service) AddNews(ctx context.Context, req *pb.AddNewsRequest) (*pb.News
 }
 
 func (s *Service) EditNews(ctx context.Context, req *pb.EditNewsRequest) (*pb.NewsResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	if !valid {
-		return nil, statusInvalidToken
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
 
 	uid, err := uuid.Parse(req.Uid)
@@ -177,12 +187,9 @@ func (s *Service) EditNews(ctx context.Context, req *pb.EditNewsRequest) (*pb.Ne
 }
 
 func (s *Service) DeleteNews(ctx context.Context, req *pb.DeleteNewsRequest) (*pb.DeleteNewsResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	if !valid {
-		return nil, statusInvalidToken
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
 
 	uid, err := uuid.Parse(req.Uid)

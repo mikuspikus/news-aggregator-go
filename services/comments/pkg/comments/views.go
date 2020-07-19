@@ -4,7 +4,7 @@ import (
 
 	// Import the generated protobuf code
 	"context"
-	ststorage "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
+	stst "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
 	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
 	"github.com/golang/protobuf/ptypes"
@@ -15,11 +15,12 @@ import (
 )
 
 var (
-	statusInvalidUUID   = status.Error(codes.InvalidArgument, "invalid UUID")
-	statusNotFound      = status.Error(codes.NotFound, "comment not found")
-	statusInvalidToken  = status.Error(codes.Unauthenticated, "invalid token")
-	statusAppIDNotFound = status.Error(codes.NotFound, "app ID not found")
-	statusInvalidSecret = status.Error(codes.InvalidArgument, "invalid secret")
+	statusServiceTokenNotFound = status.Error(codes.Unauthenticated, "service token not found")
+	statusInvalidUUID          = status.Error(codes.InvalidArgument, "invalid UUID")
+	statusNotFound             = status.Error(codes.NotFound, "comment not found")
+	statusInvalidServiceToken  = status.Error(codes.Unauthenticated, "invalid service token")
+	statusAppIDNotFound        = status.Error(codes.NotFound, "app ID not found")
+	statusInvalidSecret        = status.Error(codes.InvalidArgument, "invalid secret")
 )
 
 func internalServerError(err error) error {
@@ -52,7 +53,21 @@ func (comment *Comment) SingleComment() (*pb.SingleComment, error) {
 // Service structure implements gRPC interface for Comments Service
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *ststorage.APITokenStorage
+	tokenStorage *stst.APITokenStorage
+}
+
+func (s *Service) validateServiceToken(token string) error {
+	valid, err := s.tokenStorage.CheckToken(token)
+	if err == stst.ErrTokenNotFound {
+		return statusServiceTokenNotFound
+	}
+	if err != nil {
+		return internalServerError(err)
+	}
+	if !valid {
+		return statusInvalidServiceToken
+	}
+	return nil
 }
 
 // GetServiceToken returns new authorization token for appID and appSECRET
@@ -66,10 +81,10 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 		response.Token = token
 		return response, nil
 
-	case ststorage.ErrIDNotFound:
+	case stst.ErrIDNotFound:
 		return nil, statusAppIDNotFound
 
-	case ststorage.ErrWrongSecret:
+	case stst.ErrWrongSecret:
 		return nil, statusInvalidSecret
 
 	default:
@@ -79,14 +94,12 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 
 // DeleteComment deletes comment by ID
 func (s *Service) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest) (*pb.DeleteCommentResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, err
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
-	if !valid {
-		return nil, statusInvalidToken
-	}
-	err = s.db.Delete(req.Id)
+
+	err := s.db.Delete(req.Id)
 
 	switch err {
 	case nil:
@@ -102,13 +115,11 @@ func (s *Service) DeleteComment(ctx context.Context, req *pb.DeleteCommentReques
 
 // EditComment changes comment Body by ID
 func (s *Service) EditComment(ctx context.Context, req *pb.EditCommentRequest) (*pb.EditCommentResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, err
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
-	if !valid {
-		return nil, statusInvalidToken
-	}
+
 	comment, err := s.db.Update(req.Id, req.Body)
 
 	if err != nil {
@@ -133,13 +144,11 @@ func (s *Service) EditComment(ctx context.Context, req *pb.EditCommentRequest) (
 
 // AddComment adds new comment
 func (s *Service) AddComment(ctx context.Context, req *pb.AddCommentRequest) (*pb.AddCommentResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
-	if !valid {
-		return nil, statusInvalidToken
-	}
+
 	newsUUID, err := uuid.Parse(req.NewsUUID)
 	if err != nil {
 		return nil, statusInvalidUUID

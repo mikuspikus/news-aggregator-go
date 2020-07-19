@@ -6,18 +6,19 @@ import (
 	"errors"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
-	"github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
+	stst "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
 	pb "github.com/mikuspikus/news-aggregator-go/services/stats/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	statusInvalidUUID         = status.Error(codes.InvalidArgument, "invalid UUID")
-	statusInvalidToken        = status.Error(codes.Unauthenticated, "invalid token")
-	statusAppIDNotFound       = status.Error(codes.NotFound, "app ID not found")
-	statusInvalidSecret       = status.Error(codes.InvalidArgument, "invalid secret")
-	statusInvalidServiceToken = status.Error(codes.Unauthenticated, "invalid service token")
+	errUnknownType             = errors.New("unknown type")
+	statusInvalidUUID          = status.Error(codes.InvalidArgument, "invalid UUID")
+	statusAppIDNotFound        = status.Error(codes.NotFound, "app ID not found")
+	statusInvalidSecret        = status.Error(codes.InvalidArgument, "invalid secret")
+	statusInvalidServiceToken  = status.Error(codes.Unauthenticated, "invalid service token")
+	statusServiceTokenNotFound = status.Error(codes.Unauthenticated, "service token not found")
 )
 
 type target = int32
@@ -62,37 +63,92 @@ func (stats *Stats) SingleStat() (*pb.SingleStat, error) {
 
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *simple_token_storage.APITokenStorage
+	tokenStorage *stst.APITokenStorage
 }
 
-func (s *Service) genericAddStats(ctx context.Context, r *pb.AddStatsRequest, target target) (*pb.StatsResponse, error) {
-	apiToken := r.Token
-	valid, err := s.tokenStorage.CheckToken(apiToken)
-	if err == simple_token_storage.ErrTokenNotFound {
-		return nil, statusInvalidServiceToken
-	} else if err != nil {
-		return nil, err
+func (s *Service) validateServiceToken(token string) error {
+	valid, err := s.tokenStorage.CheckToken(token)
+	if err == stst.ErrTokenNotFound {
+		return statusServiceTokenNotFound
+	}
+	if err != nil {
+		return internalServerError(err)
 	}
 	if !valid {
-		return nil, statusInvalidServiceToken
+		return statusInvalidServiceToken
+	}
+	return nil
+}
+
+func (s *Service) genericListStats(ctx context.Context, req *pb.ListStatsRequest, target target) (*pb.ListStatsResponse, error) {
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
 	}
 
+	var pageSize int32
+	if req.PageSize == 0 {
+		pageSize = 10
+	} else {
+		pageSize = req.PageSize
+	}
+
+	var stats []*Stats
+	var pageCount int32
+	var err error
+	switch target {
+	case ACCOUNTS:
+		stats, pageCount, err = s.db.ListAccountsStats(req.PageNumber, pageSize)
+	case NEWS:
+		stats, pageCount, err = s.db.ListNews(req.PageNumber, pageSize)
+	case COMMENTS:
+		stats, pageCount, err = s.db.ListComments(req.PageNumber, pageSize)
+	default:
+		err = errUnknownType
+	}
+
+	if err != nil {
+		return nil, internalServerError(err)
+	}
+	response := new(pb.ListStatsResponse)
+	for _, stat := range stats {
+		singleStat, err := stat.SingleStat()
+		if err != nil {
+			return nil, internalServerError(err)
+		}
+		response.Stats = append(response.Stats, singleStat)
+	}
+
+	response.PageNumber = req.PageNumber
+	response.PageSize = pageSize
+	response.PageCount = pageCount
+
+	return response, nil
+}
+
+func (s *Service) genericAddStats(ctx context.Context, req *pb.AddStatsRequest, target target) (*pb.StatsResponse, error) {
+	statusError := s.validateServiceToken(req.Token)
+	if statusError != nil {
+		return nil, statusError
+	}
+
+	var err error
 	var userUID uuid.UUID
-	if r.UserUID == "" {
+	if req.UserUID == "" {
 		userUID = uuid.Nil
 	} else {
-		userUID, err = uuid.Parse(r.UserUID)
+		userUID, err = uuid.Parse(req.UserUID)
 		if err != nil {
 			return nil, statusInvalidUUID
 		}
 	}
 
 	var input, output map[string]interface{}
-	err = unmarshal(r.Input, &input)
+	err = unmarshal(req.Input, &input)
 	if err != nil {
 		return nil, internalServerError(err)
 	}
-	err = unmarshal(r.Output, &output)
+	err = unmarshal(req.Output, &output)
 	if err != nil {
 		return nil, internalServerError(err)
 	}
@@ -100,13 +156,16 @@ func (s *Service) genericAddStats(ctx context.Context, r *pb.AddStatsRequest, ta
 	stats := new(Stats)
 	switch target {
 	case ACCOUNTS:
-		stats, err = s.db.AddAccountsStats(userUID, r.Action, input, output)
+		stats, err = s.db.AddAccountsStats(userUID, req.Action, input, output)
+
 	case NEWS:
-		stats, err = s.db.AddNewsStats(userUID, r.Action, input, output)
+		stats, err = s.db.AddNewsStats(userUID, req.Action, input, output)
+
 	case COMMENTS:
-		stats, err = s.db.AddCommentsStats(userUID, r.Action, input, output)
+		stats, err = s.db.AddCommentsStats(userUID, req.Action, input, output)
+
 	default:
-		return nil, internalServerError(errors.New("unknown type"))
+		err = errUnknownType
 	}
 	if err != nil {
 		return nil, internalServerError(err)
@@ -129,121 +188,28 @@ func (s *Service) GetServiceToken(ctx context.Context, req *pb.GetServiceTokenRe
 		response := new(pb.GetServiceTokenResponse)
 		response.Token = token
 		return response, nil
-	case simple_token_storage.ErrIDNotFound:
+
+	case stst.ErrIDNotFound:
 		return nil, statusAppIDNotFound
-	case simple_token_storage.ErrWrongSecret:
+
+	case stst.ErrWrongSecret:
 		return nil, statusInvalidSecret
+
 	default:
 		return nil, internalServerError(err)
 	}
 }
 
 func (s *Service) ListAccountsStats(ctx context.Context, req *pb.ListStatsRequest) (*pb.ListStatsResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	if !valid {
-		return nil, statusInvalidToken
-	}
-
-	var pageSize int32
-	if req.PageSize == 0 {
-		pageSize = 10
-	} else {
-		pageSize = req.PageSize
-	}
-
-	stats, pageCount, err := s.db.ListAccountsStats(req.PageNumber, pageSize)
-	if err != nil {
-		return nil, err
-	}
-	response := new(pb.ListStatsResponse)
-	for _, stat := range stats {
-		singleStat, err := stat.SingleStat()
-		if err != nil {
-			return nil, internalServerError(err)
-		}
-		response.Stats = append(response.Stats, singleStat)
-	}
-
-	response.PageNumber = req.PageNumber
-	response.PageSize = pageSize
-	response.PageCount = pageCount
-
-	return response, nil
+	return s.genericListStats(ctx, req, ACCOUNTS)
 }
 
 func (s *Service) ListNewsStats(ctx context.Context, req *pb.ListStatsRequest) (*pb.ListStatsResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	if !valid {
-		return nil, statusInvalidToken
-	}
-
-	var pageSize int32
-	if req.PageSize == 0 {
-		pageSize = 10
-	} else {
-		pageSize = req.PageSize
-	}
-
-	stats, pageCount, err := s.db.ListNews(req.PageNumber, pageSize)
-	if err != nil {
-		return nil, err
-	}
-	response := new(pb.ListStatsResponse)
-	for _, stat := range stats {
-		singleStat, err := stat.SingleStat()
-		if err != nil {
-			return nil, internalServerError(err)
-		}
-		response.Stats = append(response.Stats, singleStat)
-	}
-
-	response.PageNumber = req.PageNumber
-	response.PageSize = pageSize
-	response.PageCount = pageCount
-
-	return response, nil
+	return s.genericListStats(ctx, req, NEWS)
 }
 
 func (s *Service) ListCommentsStats(ctx context.Context, req *pb.ListStatsRequest) (*pb.ListStatsResponse, error) {
-	valid, err := s.tokenStorage.CheckToken(req.Token)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	if !valid {
-		return nil, statusInvalidToken
-	}
-
-	var pageSize int32
-	if req.PageSize == 0 {
-		pageSize = 10
-	} else {
-		pageSize = req.PageSize
-	}
-
-	stats, pageCount, err := s.db.ListComments(req.PageNumber, pageSize)
-	if err != nil {
-		return nil, err
-	}
-	response := new(pb.ListStatsResponse)
-	for _, stat := range stats {
-		singleStat, err := stat.SingleStat()
-		if err != nil {
-			return nil, internalServerError(err)
-		}
-		response.Stats = append(response.Stats, singleStat)
-	}
-
-	response.PageNumber = req.PageNumber
-	response.PageSize = pageSize
-	response.PageCount = pageCount
-
-	return response, nil
+	return s.genericListStats(ctx, req, COMMENTS)
 }
 
 func (s *Service) AddAccountsStats(ctx context.Context, req *pb.AddStatsRequest) (*pb.StatsResponse, error) {
