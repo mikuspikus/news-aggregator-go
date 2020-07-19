@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrNotFound   = errors.New("refresh token not found")
-	ErrWrongToken = errors.New("wrong token")
+	ErrTokenNotFound = errors.New("refresh token not found")
+	ErrWrongToken    = errors.New("wrong token")
 )
 
 const DefaultExpirationTime = time.Minute * 30
@@ -50,13 +50,14 @@ func (storage *UserTokenStorage) Add(uid uuid.UUID) (string, error) {
 
 func (storage *UserTokenStorage) Get(token string) (string, error) {
 	uid, err := storage.redis.Get(context.Background(), token).Result()
-	if err == redis.Nil {
-		return "", ErrNotFound
-	} else if err != nil {
+	switch err {
+	case nil:
+		return uid, nil
+	case redis.Nil:
+		return "", ErrTokenNotFound
+	default:
 		return "", err
 	}
-
-	return uid, nil
 }
 
 func (storage *UserTokenStorage) Del(token string) error {

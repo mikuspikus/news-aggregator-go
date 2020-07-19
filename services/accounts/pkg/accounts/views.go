@@ -271,25 +271,27 @@ func (s *Service) GetUserByToken(ctx context.Context, req *pb.GetUserByTokenRequ
 
 	token := req.UserToken
 	struid, err := s.UserTokens.Get(token)
-	if err == utstorage.ErrNotFound {
-		return nil, statusInvalidToken
-	} else if err != nil {
-		return nil, internalServerError(err)
-	}
-	uid, err := uuid.Parse(struid)
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	user, err := s.Store.Get(uid)
-	if err == errNotFound {
-		return nil, statusNotFound
-	} else if err != nil {
-		return nil, internalServerError(err)
-	}
+	switch err {
+	case utst.ErrTokenNotFound:
+		return nil, statusUserNotFoundByToken
+	case nil:
+		uid, err := uuid.Parse(struid)
+		if err != nil {
+			return nil, internalServerError(err)
+		}
+		user, err := s.Store.Get(uid)
+		if err == errNotFound {
+			return nil, statusNotFoundByUUID
+		} else if err != nil {
+			return nil, internalServerError(err)
+		}
 
-	response, err := user.UserInfo()
-	if err != nil {
+		response, err := user.UserInfo()
+		if err != nil {
+			return nil, internalServerError(err)
+		}
+		return response, nil
+	default:
 		return nil, internalServerError(err)
 	}
-	return response, nil
 }
