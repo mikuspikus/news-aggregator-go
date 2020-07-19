@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	kqueue "github.com/mikuspikus/news-aggregator-go/pkg/kafka-queue"
 	"github.com/mikuspikus/news-aggregator-go/pkg/tracer"
 	accounts "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	comments "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
@@ -22,6 +23,12 @@ import (
 
 // Config contains env vars
 type Config struct {
+	KafkaBrokerURLs    []string `env:"KAFKA_BROKER_URLS" envDefault:"kafka:9092"`
+	KafkaClientID      string   `env:"KAFKA_CLIENT_ID" envDefault:"1"`
+	KafkaAccountsTopic string   `env:"KAFKA_ACCOUNTS_TOPIC" envDefault:"Accounts"`
+	KafkaNewsTopic     string   `env:"KAFKA_NEWS_TOPIC" envDefault:"News"`
+	KafkaCommentsTopic string   `env:"KAFKA_COMMENTS_TOPIC" envDefault:"Comments"`
+
 	CommentsAppID     string `env:"COMMENTS_APP_ID" envDefault:"CommentsAppID"`
 	CommentsAppSecret string `env:"COMMENTS_APP_SECRET" envDefault:"CommentsAppSecret"`
 	CommentsAddr      string `env:"COMMENTS_ADDR"`
@@ -38,7 +45,7 @@ type Config struct {
 	StatsAppSecret string `env:"STATS_APP_SECRET" envDefault:"StatsAppSecret"`
 	StatsAddr      string `env:"STATS_ADDR"`
 
-	Port          int    `env:"GATEWAY_PORT" envDefault:"3009"`
+	Port          int    `env:"GATEWAY_PORT" envDefault:"8080"`
 	JaegerAddress string `env:"JAEGER_ADDRESS"`
 
 	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" envDefault:"http://localhost:8080, "`
@@ -68,6 +75,7 @@ func (sc *StatsClient) UpdateToken(ctx context.Context) error {
 
 type NewsClient struct {
 	client    news.NewsClient
+	Writer    *kqueue.KafkaWriter
 	token     string
 	appID     string
 	appSECRET string
@@ -87,6 +95,7 @@ func (nc *NewsClient) UpdateToken(ctx context.Context) error {
 
 type CommentsClient struct {
 	client    comments.CommentsClient
+	Writer    *kqueue.KafkaWriter
 	token     string
 	appID     string
 	appSECRET string
@@ -107,6 +116,7 @@ func (cc *CommentsClient) UpdateToken(ctx context.Context) error {
 
 type AccountsClient struct {
 	client    accounts.AccountsClient
+	Writer    *kqueue.KafkaWriter
 	token     string
 	appID     string
 	appSECRET string
@@ -139,18 +149,21 @@ func New(cc comments.CommentsClient, ac accounts.AccountsClient, nc news.NewsCli
 		Comments: &CommentsClient{
 			client:    cc,
 			token:     "",
+			Writer:    kqueue.NewWriter(cfg.KafkaBrokerURLs, cfg.KafkaClientID, cfg.KafkaCommentsTopic),
 			appID:     cfg.CommentsAppID,
 			appSECRET: cfg.CommentsAppSecret,
 		},
 		Accounts: &AccountsClient{
 			client:    ac,
 			token:     "",
+			Writer:    kqueue.NewWriter(cfg.KafkaBrokerURLs, cfg.KafkaClientID, cfg.KafkaAccountsTopic),
 			appID:     cfg.AccountsAppID,
 			appSECRET: cfg.AccountsAppSecret,
 		},
 		News: &NewsClient{
 			client:    nc,
 			token:     "",
+			Writer:    kqueue.NewWriter(cfg.KafkaBrokerURLs, cfg.KafkaClientID, cfg.KafkaNewsTopic),
 			appID:     cfg.NewsAppID,
 			appSECRET: cfg.NewsAppSecret,
 		},
@@ -196,6 +209,12 @@ func (s *Server) Start(cfg Config) {
 	server.Shutdown(ctx)
 	log.Println("HTTP server is shutting down")
 	os.Exit(0)
+}
+
+func (s *Server) Close() {
+	s.Accounts.Writer.Close()
+	s.News.Writer.Close()
+	s.Comments.Writer.Close()
 }
 
 func getAuthorizationToken(req *http.Request) string {

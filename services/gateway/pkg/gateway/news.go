@@ -161,6 +161,16 @@ func (s *Server) getNews() http.HandlerFunc {
 		PageCount  int    `json:"page_count"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		userToken := getAuthorizationToken(r)
+		msg := new(Message)
+		msg.UserUID = ""
+		msg.Action = "getNews"
+		if user, err := s.Accounts.GetUserByToken(ctx, userToken); err == nil {
+			msg.UserUID = user.UID
+		}
+
 		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("number")
 		page, err := extractIntFromString(strpage, 0)
 		if err != nil {
@@ -172,8 +182,29 @@ func (s *Server) getNews() http.HandlerFunc {
 			http.Error(w, "can't parse URL parameter `size`", http.StatusBadRequest)
 			return
 		}
-		ctx := r.Context()
 		news, pageCount, err := s.News.ListNews(ctx, page, size)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+		id_s := make([]string, len(news))
+		for idx, new := range news {
+			id_s[idx] = new.UID
+		}
+
+		input, err := json.Marshal(map[string][]string{"id_s": id_s})
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+
+		msg.Input = input
+		msg_, err := json.Marshal(msg)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+		err = s.News.Writer.Push(ctx, nil, msg_)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return

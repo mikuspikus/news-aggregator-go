@@ -47,17 +47,19 @@ func main() {
 	defer newsConnection.Close()
 	nc := news.NewNewsClient(newsConnection)
 
-	statsConnetcion, err := grpc.Dial(cfg.StatsAddr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)))
+	statsConnection, err := grpc.Dial(cfg.StatsAddr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(tracer)))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer statsConnetcion.Close()
-	sc := stats.NewStatsClient(statsConnetcion)
+	defer statsConnection.Close()
+	sc := stats.NewStatsClient(statsConnection)
 
 	service := gateway.New(cc, ac, nc, sc, tracer, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer service.Close()
+	go service.NewsWorker(cfg.KafkaBrokerURLs, "my-client-id", cfg.KafkaNewsTopic)
 
 	service.Start(cfg)
 }
