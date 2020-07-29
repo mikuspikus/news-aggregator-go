@@ -194,13 +194,13 @@ func (s *Service) GetUserToken(ctx context.Context, req *pb.GetUserTokenRequest)
 	username, password := req.Username, req.Password
 	user, err := s.Store.GetUserByUsername(username)
 	if err == errNotFound {
-		return nil, statusNotFoundByUUID
+		return nil, statusInvalidUserCredentials
 	} else if err != nil {
 		return nil, internalServerError(err)
 	}
 	valid, err := s.Store.CheckPassword(user.Uid, password)
 	if err == errNotFound {
-		return nil, statusNotFoundByUUID
+		return nil, statusInvalidUserCredentials
 	} else if err != nil {
 		return nil, err
 	}
