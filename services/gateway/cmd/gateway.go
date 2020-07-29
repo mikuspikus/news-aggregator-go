@@ -1,17 +1,16 @@
 package main
 
 import (
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	news "github.com/mikuspikus/news-aggregator-go/services/news/proto"
-	stats "github.com/mikuspikus/news-aggregator-go/services/stats/proto"
-	"google.golang.org/grpc"
-	"log"
-
 	"github.com/caarlos0/env"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/mikuspikus/news-aggregator-go/pkg/tracer"
 	accounts "github.com/mikuspikus/news-aggregator-go/services/accounts/proto"
 	comments "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 	"github.com/mikuspikus/news-aggregator-go/services/gateway/pkg/gateway"
+	news "github.com/mikuspikus/news-aggregator-go/services/news/proto"
+	stats "github.com/mikuspikus/news-aggregator-go/services/stats/proto"
+	"google.golang.org/grpc"
+	"log"
 )
 
 func main() {

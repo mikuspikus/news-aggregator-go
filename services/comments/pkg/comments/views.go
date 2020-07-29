@@ -1,14 +1,11 @@
 package comments
 
 import (
-
-	// Import the generated protobuf code
 	"context"
-	stst "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
-	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
-
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
+	stst "github.com/mikuspikus/news-aggregator-go/pkg/simple-token-storage"
+	pb "github.com/mikuspikus/news-aggregator-go/services/comments/proto"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
