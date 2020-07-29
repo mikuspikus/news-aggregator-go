@@ -124,7 +124,7 @@ func (db *db) Get(uid uuid.UUID) (*News, error) {
 }
 
 func (db *db) Create(user uuid.UUID, title string, uri url.URL) (*News, error) {
-	query := "insert into news (uid, user_uid, title, uri, created, edited) values($1, $2, $3, $4, $5, $6)"
+	query := "insert into news (uid, user_uid, title, uri, created_at, edited_at) values($1, $2, $3, $4, $5, $6)"
 	now := time.Now()
 	uid := uuid.New()
 
@@ -148,7 +148,7 @@ func (db *db) Create(user uuid.UUID, title string, uri url.URL) (*News, error) {
 }
 
 func (db *db) Update(uid uuid.UUID, title string, uri url.URL) (*News, error) {
-	query := "update news set title=$1 uri=$2 edited_at=$3 where id=$4 returning user_uid, created_at"
+	query := "update news set title=$1, uri=$2, edited_at=$3 where uid=$4 returning user_uid, created_at"
 
 	now := time.Now()
 	var user string
@@ -173,7 +173,7 @@ func (db *db) Update(uid uuid.UUID, title string, uri url.URL) (*News, error) {
 }
 
 func (db *db) Delete(uid uuid.UUID) error {
-	query := "delete views where uid=$1"
+	query := "delete from news where uid=$1"
 	cmd, err := db.Exec(context.Background(), query, uid.String())
 	if err != nil {
 		return err

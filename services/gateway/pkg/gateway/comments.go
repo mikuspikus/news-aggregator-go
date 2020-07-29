@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,12 +17,12 @@ import (
 )
 
 type Comment struct {
-	ID       int
-	UserUUID string
-	NewsUUID string
-	Body     string
-	Created  time.Time
-	Edited   time.Time
+	ID       int       `json:"id"`
+	UserUUID string    `json:"user_uuid"`
+	NewsUUID string    `json:"news_uuid"`
+	Body     string    `json:"body"`
+	Created  time.Time `json:"created"`
+	Edited   time.Time `json:"edited"`
 }
 
 //
@@ -79,34 +80,33 @@ func (cc *CommentsClient) ListComments(ctx context.Context, news string, pageNum
 }
 
 func (cc *CommentsClient) GetComment(ctx context.Context, id int32) (*Comment, error) {
-	commentsResponse, err := cc.client.GetComment(ctx, &comments.GetCommentRequest{
+	response, err := cc.client.GetComment(ctx, &comments.GetCommentRequest{
 		Id: id,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return convertSingleComment(commentsResponse.Comment)
+	return convertSingleComment(response.Comment)
 }
 
 func (cc *CommentsClient) AddComment(ctx context.Context, body, userUUID, newsUUID string) (*Comment, error) {
-	commentsResponse, err := cc.client.AddComment(ctx, &comments.AddCommentRequest{
+	request := &comments.AddCommentRequest{
 		Body:     body,
 		UserUUID: userUUID,
 		NewsUUID: newsUUID,
 		Token:    cc.token,
-	})
+	}
+	response, err := cc.client.AddComment(ctx, request)
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
 			err = cc.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
-			commentsResponse, err = cc.client.AddComment(ctx, &comments.AddCommentRequest{
-				Body:     body,
-				UserUUID: userUUID,
-				NewsUUID: newsUUID,
-				Token:    cc.token,
-			})
+
+			request.Token = cc.token
+
+			response, err = cc.client.AddComment(ctx, request)
 			if err != nil {
 				return nil, err
 			}
@@ -114,24 +114,24 @@ func (cc *CommentsClient) AddComment(ctx context.Context, body, userUUID, newsUU
 			return nil, err
 		}
 	}
-	return convertSingleComment(commentsResponse.Comment)
+	return convertSingleComment(response.Comment)
 }
 
-func (cc *CommentsClient) UpdateComment(ctx context.Context, body string) (*Comment, error) {
-	commentsResponse, err := cc.client.EditComment(ctx, &comments.EditCommentRequest{
+func (cc *CommentsClient) UpdateComment(ctx context.Context, id int32, body string) (*Comment, error) {
+	request := &comments.EditCommentRequest{
+		Id:    id,
 		Body:  body,
 		Token: cc.token,
-	})
+	}
+	response, err := cc.client.EditComment(ctx, request)
 	if err != nil {
 		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
 			err = cc.UpdateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
-			commentsResponse, err = cc.client.EditComment(ctx, &comments.EditCommentRequest{
-				Body:  body,
-				Token: cc.token,
-			})
+			request.Token = cc.token
+			response, err = cc.client.EditComment(ctx, request)
 			if err != nil {
 				return nil, err
 			}
@@ -139,7 +139,7 @@ func (cc *CommentsClient) UpdateComment(ctx context.Context, body string) (*Comm
 			return nil, err
 		}
 	}
-	return convertSingleComment(commentsResponse.Comment)
+	return convertSingleComment(response.Comment)
 }
 
 func (cc *CommentsClient) DeleteComment(ctx context.Context, id int32) error {
@@ -172,10 +172,10 @@ func (cc *CommentsClient) DeleteComment(ctx context.Context, id int32) error {
 // getNewsComments returns paged comment for news passed through Mux router
 func (s *Server) getNewsComments() http.HandlerFunc {
 	type Response struct {
-		Comments   []Comment
-		PageSize   int
-		PageNumber int
-		PagesCount int
+		Comments   []Comment `json:"comments"`
+		PageSize   int       `json:"page_size"`
+		PageNumber int       `json:"page_number"`
+		PagesCount int       `json:"pages_count"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +191,7 @@ func (s *Server) getNewsComments() http.HandlerFunc {
 			return
 		}
 		vars := mux.Vars(r)
-		newsUUID := vars["news"]
+		newsUUID := vars["newsuuid"]
 		ctx := r.Context()
 
 		comments, pageCount, err := s.Comments.ListComments(ctx, newsUUID, page, size)
@@ -265,6 +265,7 @@ func (s *Server) deleteComment() http.HandlerFunc {
 		}
 
 		comment, err := s.Comments.GetComment(ctx, int32(id))
+		log.Printf("Id: %v, comment: %v", id, comment)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -325,6 +326,7 @@ func (s *Server) updateComment() http.HandlerFunc {
 		}
 
 		comment, err := s.Comments.GetComment(ctx, int32(id))
+		log.Printf("ID: %v, comment: %v", id, comment)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -335,12 +337,13 @@ func (s *Server) updateComment() http.HandlerFunc {
 			return
 		}
 
-		comment, err = s.Comments.UpdateComment(ctx, req.Body)
+		comment, err = s.Comments.UpdateComment(ctx, int32(id), req.Body)
+		log.Printf("Comment: %v", comment)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
 		}
-		json, err := json.Marshal(*comment)
+		json, err := json.Marshal(comment)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return

@@ -14,12 +14,12 @@ import (
 )
 
 type News struct {
-	UID     string
-	User    string
-	Title   string
-	URI     string
-	Created time.Time
-	Edited  time.Time
+	UID     string    `json:"uid"`
+	User    string    `json:"user"`
+	Title   string    `json:"title"`
+	URI     string    `json:"uri"`
+	Created time.Time `json:"created"`
+	Edited  time.Time `json:"edited"`
 }
 
 func convertSingleNews(singleNews *news.SingleNews) (*News, error) {
@@ -171,7 +171,7 @@ func (s *Server) getNews() http.HandlerFunc {
 			msg.UserUID = user.UID
 		}
 
-		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("number")
+		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("size")
 		page, err := extractIntFromString(strpage, 0)
 		if err != nil {
 			http.Error(w, "can't parse URL parameter 'page'", http.StatusBadRequest)
@@ -216,7 +216,7 @@ func (s *Server) getNews() http.HandlerFunc {
 			PageNumber: page,
 			PageCount:  pageCount,
 		}
-		json, err := json.Marshal(response)
+		json, err := json.Marshal(&response)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -264,7 +264,7 @@ func (s *Server) deleteNews() http.HandlerFunc {
 		}
 
 		vars := mux.Vars(r)
-		uid := vars["newsuuid"]
+		uid := vars["newsuid"]
 
 		news, err := s.News.GetNews(ctx, uid)
 		if err != nil {
@@ -272,7 +272,7 @@ func (s *Server) deleteNews() http.HandlerFunc {
 			return
 		}
 
-		if user.UID != news.UID {
+		if user.UID != news.User {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -309,7 +309,11 @@ func (s *Server) updateNews() http.HandlerFunc {
 		vars := mux.Vars(r)
 		uid := vars["newsuid"]
 		news, err := s.News.GetNews(ctx, uid)
-		if user.UID != news.UID {
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+		if user.UID != news.User {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}

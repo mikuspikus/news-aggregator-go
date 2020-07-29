@@ -14,11 +14,11 @@ import (
 )
 
 type User struct {
-	UID      string
-	Username string
-	Created  time.Time
-	Edited   time.Time
-	IsAdmin  bool
+	UID      string    `json:"uid"`
+	Username string    `json:"username"`
+	Created  time.Time `json:"created"`
+	Edited   time.Time `json:"edited"`
+	IsAdmin  bool      `json:"is_admin"`
 }
 
 // convertUserInfo converts accounts.UserInfo into User
@@ -211,7 +211,7 @@ func (ac *AccountsClient) RefreshUserToken(ctx context.Context, token, refreshTo
 func (s *Server) getUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		uid := vars["useruuid"]
+		uid := vars["uid"]
 
 		ctx := r.Context()
 
@@ -221,7 +221,7 @@ func (s *Server) getUser() http.HandlerFunc {
 			return
 		}
 
-		json, err := json.Marshal(*user)
+		json, err := json.Marshal(user)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -356,8 +356,11 @@ func (s *Server) getUserToken() http.HandlerFunc {
 	}
 
 	type response struct {
-		token         string
-		refresh_token string
+		Uid          string `json:"uid"`
+		Username     string `json:"username"`
+		IsAdmin      bool   `json:"is_admin"`
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req request
@@ -379,7 +382,19 @@ func (s *Server) getUserToken() http.HandlerFunc {
 			return
 		}
 
-		json, err := json.Marshal(&response{token: token, refresh_token: refreshToken})
+		user, err := s.Accounts.GetUserByToken(ctx, token)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+
+		json, err := json.Marshal(&response{
+			Uid:          user.UID,
+			Username:     user.Username,
+			IsAdmin:      user.IsAdmin,
+			Token:        token,
+			RefreshToken: refreshToken,
+		})
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
@@ -397,8 +412,11 @@ func (s *Server) refreshUserToken() http.HandlerFunc {
 	}
 
 	type response struct {
-		token         string
-		refresh_token string
+		Uid          string `json:"uid"`
+		Username     string `json:"username"`
+		IsAdmin      bool   `json:"is_admin"`
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req request
@@ -420,7 +438,19 @@ func (s *Server) refreshUserToken() http.HandlerFunc {
 			return
 		}
 
-		json, err := json.Marshal(&response{token: token, refresh_token: refreshToken})
+		user, err := s.Accounts.GetUserByToken(ctx, token)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+
+		json, err := json.Marshal(&response{
+			Uid:          user.UID,
+			Username:     user.Username,
+			IsAdmin:      user.IsAdmin,
+			Token:        token,
+			RefreshToken: refreshToken,
+		})
 		if err != nil {
 			handleRPCErrors(w, err)
 			return

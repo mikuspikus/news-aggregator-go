@@ -48,9 +48,9 @@ type Config struct {
 	Port          int    `env:"GATEWAY_PORT" envDefault:"8080"`
 	JaegerAddress string `env:"JAEGER_ADDRESS"`
 
-	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" envDefault:"http://localhost:8080, "`
-	AllowedMethods   []string `env:"ALLOWED_METHODS" envDefault:"GET, POST, PATCH, DELETE, OPTIONS"`
-	AllowedHeaders   []string `env:"ALLOWED_HEADERS" envDefault:"Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Origin, Authorization"`
+	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" envSeparator:"," envDefault:"http://localhost:8000"`
+	AllowedMethods   []string `env:"ALLOWED_METHODS" envSeparator:"," envDefault:"GET,POST,PATCH,DELETE,OPTIONS"`
+	AllowedHeaders   []string `env:"ALLOWED_HEADERS" envSeparator:"," envDefault:"Origin,X-Requested-With,Content-Type,Accept,Access-Control-Allow-Origin,Authorization"`
 	AllowCredentials bool     `env:"ALLOWED_CREDENTIALS" envDefault:"true"`
 }
 
@@ -179,6 +179,11 @@ func New(cc comments.CommentsClient, ac accounts.AccountsClient, nc news.NewsCli
 
 func (s *Server) Start(cfg Config) {
 	cors := cors.New(cors.Options{
+		//Debug: true,
+		//AllowedOrigins:   []string{"http://localhost:8000"},
+		//AllowedMethods:   []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		//AllowedHeaders:   []string{"Origin", "X-Requested-With", "Content-Type", "Accept", "Access-Control-Allow-Origin", "Authorization"},
+		//AllowCredentials: true,
 		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   cfg.AllowedMethods,
 		AllowedHeaders:   cfg.AllowedHeaders,
