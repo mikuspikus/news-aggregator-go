@@ -12,12 +12,12 @@ import (
 )
 
 type Stats struct {
-	ID        int
-	User      string
-	Action    string
-	Timestamp time.Time
-	Input     map[string]string
-	Output    map[string]string
+	ID        int `json:"id"`
+	User      string `json:"user"`
+	Action    string `json:"action"`
+	Timestamp time.Time `json:"timestamp"`
+	Input     map[string]string `json:"input"`
+	Output    map[string]string `json:"output"`
 }
 
 func convertSingleStat(singleStat *stats.SingleStat) (*Stats, error) {
