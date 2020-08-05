@@ -19,6 +19,9 @@ func (s *Server) routes() {
 	newsRouter.HandleFunc("/{newsuuid}/comments/{id}", s.updateComment()).Methods("PATCH")
 	newsRouter.HandleFunc("/{newsuuid}/comments/{id}", s.deleteComment()).Methods("DELETE")
 
+	statsRouter := s.Router.Mux.PathPrefix("/api/stats").Subrouter()
+	statsRouter.HandleFunc("/news", s.listNewsStats()).Methods("GET")
+
 	s.Router.Mux.HandleFunc("/api/user", s.addUser()).Methods("POST")
 	s.Router.Mux.HandleFunc("/api/auth/token", s.getUserToken()).Methods("POST")
 	s.Router.Mux.HandleFunc("/api/auth/refresh", s.refreshUserToken()).Methods("POST")
