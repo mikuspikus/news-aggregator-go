@@ -12,12 +12,12 @@ import (
 )
 
 type Stats struct {
-	ID        int `json:"id"`
-	User      string `json:"user"`
-	Action    string `json:"action"`
-	Timestamp time.Time `json:"timestamp"`
-	Input     map[string]string `json:"input"`
-	Output    map[string]string `json:"output"`
+	ID        int                    `json:"id"`
+	User      string                 `json:"user"`
+	Action    string                 `json:"action"`
+	Timestamp time.Time              `json:"timestamp"`
+	Input     map[string]interface{} `json:"input"`
+	Output    map[string]interface{} `json:"output"`
 }
 
 func convertSingleStat(singleStat *stats.SingleStat) (*Stats, error) {
@@ -215,25 +215,25 @@ func (s *Server) listNewsStats() http.HandlerFunc {
 		PageCount  int     `json:"page_count"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		userToken := getAuthorizationToken(r)
-		if userToken == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
+		//userToken := getAuthorizationToken(r)
+		//if userToken == "" {
+		//	w.WriteHeader(http.StatusUnauthorized)
+		//	return
+		//}
+		//
 		ctx := r.Context()
+		//
+		//user, err := s.Accounts.GetUserByToken(ctx, userToken)
+		//if err != nil {
+		//	handleRPCErrors(w, err)
+		//	return
+		//}
+		//if !user.IsAdmin {
+		//	w.WriteHeader(http.StatusForbidden)
+		//	return
+		//}
 
-		user, err := s.Accounts.GetUserByToken(ctx, userToken)
-		if err != nil {
-			handleRPCErrors(w, err)
-			return
-		}
-		if !user.IsAdmin {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("number")
+		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("size")
 		page, err := extractIntFromString(strpage, 0)
 		if err != nil {
 			http.Error(w, "can't parse URL parameter 'page'", http.StatusBadRequest)
