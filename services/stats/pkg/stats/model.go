@@ -60,22 +60,23 @@ func (db *db) pageCount(viewName string, pageSize int32) (pageCount int32, err e
 	return pageCount, nil
 }
 
-func (db *db) listStats(viewName string, pageNumber, pageSize int32) (stats_s []*Stats, pageCount int32, err error) {
-	queryTemplate := "select * from %s limit $1 offset $2"
+func (db *db) listStats(viewName string, pageNumber, pageSize int32) ([]*Stats, int32, error) {
+	queryTemplate := "select  id, user_uid, action, timestamp, input, output from %s limit $1 offset $2"
 	query := fmt.Sprintf(queryTemplate, viewName)
 	lastRecord := pageNumber * pageSize
 
-	rows, err := db.Query(context.Background(), query, pageNumber, lastRecord)
+	rows, err := db.Query(context.Background(), query, pageSize, lastRecord)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
+	stats_s := make([]*Stats, 0)
 	for rows.Next() {
 		stats := new(Stats)
 
 		var userUID string
-		err := rows.Scan(&stats.ID, &userUID, &stats.Timestamp, &stats.Input, &stats.Output)
+		err := rows.Scan(&stats.ID, &userUID, &stats.Action, &stats.Timestamp, &stats.Input, &stats.Output)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -90,7 +91,7 @@ func (db *db) listStats(viewName string, pageNumber, pageSize int32) (stats_s []
 	if err = rows.Err(); err != nil {
 		return nil, 0, err
 	}
-	pageCount, err = db.pageCount(viewName, pageSize)
+	pageCount, err := db.pageCount(viewName, pageSize)
 	if err != nil {
 		return nil, 0, err
 	}
