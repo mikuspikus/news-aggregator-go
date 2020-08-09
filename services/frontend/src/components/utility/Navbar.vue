@@ -10,6 +10,8 @@
         </b-navbar-nav>
 
         <b-navbar-nav class="ml-auto">
+          <b-nav-item v-if="isAdmin" :to="{ name: 'AdminPanel'}">Admin panel</b-nav-item>
+
           <b-nav-item v-if="isLogged" @click="logout">Sign out</b-nav-item>
 
           <template v-else>
@@ -28,6 +30,7 @@ export default {
 
   props: {
     isLogged: { type: Boolean, required: true },
+    isAdmin: { type: Boolean, required: true },
   },
 
   methods: {
