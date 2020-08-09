@@ -102,7 +102,7 @@ export default {
   },
 
   methods: {
-    _processStats(item) {
+    _process(item) {
       const tmp = item;
       tmp.input = {
         data: tmp.input,
@@ -115,8 +115,8 @@ export default {
       this.items.push(tmp);
     },
 
-    changePage(newPage) {
-      this.currentPage = newPage;
+    changePage(newPageNumber) {
+      this.currentPage = newPageNumber;
       this.fetch(this.currentPage, this.pageSize);
     },
 
@@ -125,25 +125,37 @@ export default {
       this.changePage(1);
     },
 
+    /**
+     * Returns count of obj: Obj properties. If obj is null returns 0.
+     */
     _objSize(obj) {
       return obj ? Object.keys(obj).length : 0;
     },
 
     fetch(page, size) {
       this.items = [];
-      console.log(page, size);
       this.$http({
-        url: "stats/news",
+        url: `admin/stats/${this.serviceName}`,
         params: { page: page - 1, size: size },
         method: "GET",
       })
         .then((response) => {
-          console.log(response.data);
-          response.data.stats.forEach(this._processStats);
+          response.data.stats.forEach(this._process);
           this.pageCount = response.data.page_count;
         })
-        .catch();
+        .catch((error) => {
+          this.$bvToast.toast(error, {
+            title: "Full stats error",
+            autoHideDelay: 5000,
+            variant: "white",
+            toaster: "b-toaster-bottom-center",
+          });
+        });
     },
+  },
+
+  props: {
+    serviceName: { type: String, required: true },
   },
 
   data() {
@@ -184,7 +196,7 @@ export default {
         { key: "io", label: "Input/Output", class: "align-middle" },
       ],
       currentPage: 1,
-      pageSize: 5,
+      pageSize: 15,
       pageCount: 1,
       pageOptions: [5, 10, 15, 20, 25],
     };
