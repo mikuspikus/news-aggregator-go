@@ -59,7 +59,7 @@ const router = new VueRouter({
 
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.IsAdminOnly)) {
-    if (store.getters.isAdmin) {
+    if (!store.getters.isAdmin) {
       next({ name: 'Home' })
       return
     }

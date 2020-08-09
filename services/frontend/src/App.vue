@@ -1,25 +1,27 @@
 <template>
   <div id="app">
-    <navbar :isLogged="isLogged"/>
-    
-    <router-view/>
+    <navbar :isLogged="isLogged" :isAdmin="isAdmin" />
+
+    <router-view />
   </div>
 </template>
 
 <script>
-
-import Navbar from "../src/components/utility/Navbar.vue"
+import Navbar from "../src/components/utility/Navbar.vue";
 
 export default {
   components: { Navbar },
 
   computed: {
+    isAdmin() {
+      return this.$store.getters.isAdmin;
+    },
+
     isLogged() {
       return this.$store.getters.isLogged;
-    }
-  }
-}
-
+    },
+  },
+};
 </script>
 
 <style>

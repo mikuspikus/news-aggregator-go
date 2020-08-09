@@ -11,10 +11,20 @@ const refreshuri = process.env.VUE_APP_REFRESHURI ? process.env.VUE_APP_REFRESHU
 
 Vue.use(Vuex)
 
+function _makePayload(responseData) {
+  return {
+    token: responseData.token,
+    refresh_token: responseData.refresh_token,
+    username: responseData.username,
+    uid: responseData.uid,
+    is_admin: responseData.is_admin
+  }
+}
+
 export default new Vuex.Store({
   state: {
     status: '',
-    isAdmin: localStorage.getItem('isAdmin') || '',
+    is_admin: 'true' === localStorage.getItem('is_admin') || false,
     token: localStorage.getItem('token') || '',
     refresh_token: localStorage.getItem('refresh_token') || '',
     username: localStorage.getItem('username') || '',
@@ -32,7 +42,7 @@ export default new Vuex.Store({
       state.refresh_token = payload.refresh_token
       state.username = payload.username
       state.uid = payload.uid
-      state.isAdmin = payload.isAdmin
+      state.is_admin = payload.is_admin
     },
 
     refresh(state, payload) {
@@ -53,7 +63,7 @@ export default new Vuex.Store({
       state.refresh_token = ''
       state.username = ''
       state.uid = ''
-      state.isAdmin = ''
+      state.is_admin = false
     }
   },
   actions: {
@@ -62,7 +72,7 @@ export default new Vuex.Store({
         (resolve, reject) => {
           commit('request')
 
-          axios({ url: refreshuri, data: {token: this.state.token, refresh_token: this.state.refresh_token}, method: 'POST' })
+          axios({ url: refreshuri, data: { token: this.state.token, refresh_token: this.state.refresh_token }, method: 'POST' })
             .then(
               response => {
                 const payload = {
@@ -88,7 +98,7 @@ export default new Vuex.Store({
               localStorage.removeItem('refresh_token')
               localStorage.removeItem('username')
               localStorage.removeItem('uid')
-              localStorage.removeItem('isAdmin')
+              localStorage.removeItem('is_admin')
 
               reject(error)
             })
@@ -104,13 +114,7 @@ export default new Vuex.Store({
           axios({ url: loginuri, data: data.credentials, method: 'POST' })
             .then(
               response => {
-                const payload = {
-                  token: response.data.token,
-                  refresh_token: response.data.refresh_token,
-                  username: response.data.username,
-                  uid: response.data.uid,
-                  isAdmin: response.data.is_admin
-                }
+                const payload = _makePayload(response.data)
 
                 commit('login', payload)
 
@@ -118,7 +122,7 @@ export default new Vuex.Store({
                 localStorage.setItem('refresh_token', payload.refresh_token)
                 localStorage.setItem('username', payload.username)
                 localStorage.setItem('uid', payload.uid)
-                localStorage.setItem('isAdmin', payload.is_admin)
+                localStorage.setItem('is_admin', payload.is_admin)
 
                 const requester = data.axios
                 requester.defaults.headers.common['Authorization'] = `${keyword} ${payload.token}`
@@ -132,7 +136,7 @@ export default new Vuex.Store({
               localStorage.removeItem('refresh_token')
               localStorage.removeItem('username')
               localStorage.removeItem('uid')
-              localStorage.removeItem('isAdmin')
+              localStorage.removeItem('is_admin')
 
               reject(error)
             })
@@ -147,13 +151,7 @@ export default new Vuex.Store({
 
           axios({ url: registeruri, data: data.credentials, method: 'POST' })
             .then(response => {
-              console.log(response.data)
-              const payload = {
-                token: response.data.token,
-                refresh_token: response.data.refresh_token,
-                username: response.data.username,
-                uid: response.data.uid
-              }
+              const payload = _makePayload(response.data)
 
               commit('login', payload)
 
@@ -161,6 +159,7 @@ export default new Vuex.Store({
               localStorage.setItem('refresh_token', payload.refresh_token)
               localStorage.setItem('username', payload.username)
               localStorage.setItem('uid', payload.uid)
+              localStorage.setItem("is_admin", payload.is_admin)
 
               const requester = data.axios
               requester.defaults.headers.common['Authorization'] = `${keyword} ${payload.token}`
@@ -174,6 +173,7 @@ export default new Vuex.Store({
               localStorage.removeItem('refresh_token')
               localStorage.removeItem('username')
               localStorage.removeItem('uid')
+              localStorage.removeItem('is_admin')
 
               reject(error)
             })
@@ -190,7 +190,7 @@ export default new Vuex.Store({
           localStorage.removeItem('refresh_token')
           localStorage.removeItem('username')
           localStorage.removeItem('uid')
-          localStorage.removeItem('isAdmin')
+          localStorage.removeItem('is_admin')
 
           const requester = data.axios
           delete requester.defaults.headers.common['Authorization']
@@ -202,7 +202,7 @@ export default new Vuex.Store({
   },
 
   getters: {
-    isAdmin: state => !!state.isAdmin,
+    isAdmin: state => state.is_admin,
     isLogged: state => !!state.token,
     status: state => state.status,
     uid: state => state.uid,
