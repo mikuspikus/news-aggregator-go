@@ -73,6 +73,26 @@ func (ac *AccountsClient) GetUser(ctx context.Context, userUUID string) (*User, 
 	return convertUserInfo(response)
 }
 
+func (ac *AccountsClient) ListUser(ctx context.Context, pageNumber, pageSize int) ([]*User, int, error) {
+	request := &accounts.ListUsersRequest{
+		PageSize:   int32(pageSize),
+		PageNumber: int32(pageNumber),
+	}
+	response, err := ac.client.ListUsers(ctx, request)
+	if err != nil {
+		return nil, 0, err
+	}
+	users := make([]*User, len(response.Users))
+	for idx, userinfo := range response.Users {
+		user, err := convertUserInfo(userinfo)
+		if err != nil {
+			return nil, 0, err
+		}
+		users[idx] = user
+	}
+	return users, int(response.PageCount), nil
+}
+
 func (ac *AccountsClient) AddUser(ctx context.Context, username, password string) (*User, error) {
 	response, err := ac.client.AddUser(ctx, &accounts.AddUserRequest{
 		ApiToken: ac.token,
@@ -124,6 +144,36 @@ func (ac *AccountsClient) EditUser(ctx context.Context, username, password strin
 			return nil, err
 		}
 	}
+	return convertUserInfo(response)
+}
+
+func (ac *AccountsClient) AdminEditUser(ctx context.Context, uid, username string, isAdmin bool) (*User, error) {
+	request := &accounts.AdminEditUserRequest{
+		ApiToken: ac.token,
+		Uid:      uid,
+		IsAdmin:  isAdmin,
+		Username: username,
+	}
+
+	response, err := ac.client.AdminEditUser(ctx, request)
+	if err != nil {
+		if status, ok := status.FromError(err); ok && status.Code() == codes.Unauthenticated {
+			err = ac.UpdateToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			request.ApiToken = ac.token
+
+			response, err = ac.client.AdminEditUser(ctx, request)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
 	return convertUserInfo(response)
 }
 
@@ -206,6 +256,55 @@ func (ac *AccountsClient) RefreshUserToken(ctx context.Context, token, refreshTo
 		}
 	}
 	return response.Token, response.RefreshToken, nil
+}
+
+func (s *Server) listUsers() http.HandlerFunc {
+	type Response struct {
+		Users      []*User `json:"users"`
+		PagesCount int     `json:"pages_count"`
+		PageNumber int     `json:"page_number"`
+		PageSize   int     `json:"page_size"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		userToken := getAuthorizationToken(r)
+		if userToken != "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		strpage, strsize := r.URL.Query().Get("page"), r.URL.Query().Get("number")
+		page, err := extractIntFromString(strpage, 0)
+		if err != nil {
+			http.Error(w, "can't parse URL parameter 'page'", http.StatusBadRequest)
+			return
+		}
+		size, err := extractIntFromString(strsize, 10)
+		if err != nil {
+			http.Error(w, "can't parse URL parameter `size`", http.StatusBadRequest)
+			return
+		}
+
+		ctx := r.Context()
+
+		comments, pageCount, err := s.Accounts.ListUser(ctx, page, size)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+		httpResponse := Response{
+			Users:      comments,
+			PageSize:   size,
+			PageNumber: page,
+			PagesCount: pageCount,
+		}
+		json, err := json.Marshal(httpResponse)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(json)
+	}
 }
 
 func (s *Server) getUser() http.HandlerFunc {
@@ -350,12 +449,12 @@ func (s *Server) deleteUser() http.HandlerFunc {
 }
 
 func (s *Server) getUserToken() http.HandlerFunc {
-	type request struct {
+	type Request struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 
-	type response struct {
+	type Response struct {
 		Uid          string `json:"uid"`
 		Username     string `json:"username"`
 		IsAdmin      bool   `json:"is_admin"`
@@ -363,7 +462,7 @@ func (s *Server) getUserToken() http.HandlerFunc {
 		RefreshToken string `json:"refresh_token"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req request
+		var req Request
 		bytes, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			handleRPCErrors(w, err)
@@ -388,7 +487,7 @@ func (s *Server) getUserToken() http.HandlerFunc {
 			return
 		}
 
-		json, err := json.Marshal(&response{
+		json, err := json.Marshal(&Response{
 			Uid:          user.UID,
 			Username:     user.Username,
 			IsAdmin:      user.IsAdmin,
@@ -457,6 +556,63 @@ func (s *Server) refreshUserToken() http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		w.Write(json)
+	}
+}
+
+func (s *Server) adminEditUser() http.HandlerFunc {
+	type Request struct {
+		Username string `json:"username"`
+		IsAdmin  bool   `json:"is_admin"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		//userToken := getAuthorizationToken(r)
+		//if userToken == "" {
+		//	w.WriteHeader(http.StatusUnauthorized)
+		//	return
+		//}
+
+		ctx := r.Context()
+		//
+		//user, err := s.Accounts.GetUserByToken(ctx, userToken)
+		//if err != nil {
+		//	handleRPCErrors(w, err)
+		//	return
+		//}
+		//if !user.IsAdmin {
+		//	w.WriteHeader(http.StatusForbidden)
+		//	return
+		//}
+
+		bytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+		var request Request
+		err = json.Unmarshal(bytes, &request)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+
+		vars := mux.Vars(r)
+		uid := vars["useruid"]
+
+		user, err := s.Accounts.AdminEditUser(ctx, uid, request.Username, request.IsAdmin)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+
+		json, err := json.Marshal(user)
+		if err != nil {
+			handleRPCErrors(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
 		w.Write(json)
 	}
 }

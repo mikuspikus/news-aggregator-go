@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -30,10 +31,15 @@ type User struct {
 }
 
 type DataStoreHandler interface {
+	List(pageNumber, pageSize int32) ([]*User, int32, error)
 	Get(uid uuid.UUID) (*User, error)
 	Create(username, password string) (*User, error)
 	Update(uid uuid.UUID, username, password string) (*User, error)
 	Delete(uid uuid.UUID) error
+
+	// Admin panel
+	AdminUpdate(uid uuid.UUID, username string, isAdmin bool) (*User, error)
+
 	CheckPassword(uid uuid.UUID, password string) (bool, error)
 	GetUserByUsername(username string) (*User, error)
 	Close()
@@ -59,6 +65,59 @@ func hashPassword(pwd string) (string, error) {
 func checkPassword(pwd, hashedPwd string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(pwd))
 	return err == nil
+}
+
+func (db *db) pageCount(pageSize int32) (int32, error) {
+	query := "select count(*) from users "
+
+	row := db.QueryRow(context.Background(), query)
+	var rowsCount int32
+	err := row.Scan(&rowsCount)
+	if err != nil {
+		return 0, err
+	}
+	pageCount := math.Ceil(float64(rowsCount) / float64(pageSize))
+
+	return int32(pageCount), nil
+}
+
+func (db *db) List(pageNumber, pageSize int32) ([]*User, int32, error) {
+	query := "select uid, username, created_at, edited_at, is_admin from users limit $1 offset $2"
+	lastRecord := pageNumber * pageSize
+
+	rows, err := db.Query(context.Background(), query, pageSize, lastRecord)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	users := make([]*User, 0)
+	for rows.Next() {
+		user := new(User)
+		var userUUID string
+
+		err := rows.Scan(&userUUID, &user.Username, &user.Created, &user.Edited, &user.IsAdmin)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		user.Uid, err = uuid.Parse(userUUID)
+		if err != nil {
+			return nil, 0, err
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	pageCount, err := db.pageCount(pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, pageCount, nil
 }
 
 func (db *db) Get(uid uuid.UUID) (*User, error) {
@@ -109,7 +168,7 @@ func (db *db) Create(username, password string) (*User, error) {
 }
 
 func (db *db) Update(uid uuid.UUID, username, password string) (*User, error) {
-	query := "update comments set username=$1 password_hash=$2 edited_at=$3 where uid=$4 returning created_at, is_admin"
+	query := "update users set username=$1 password_hash=$2 edited_at=$3 where uid=$4 returning created_at, is_admin"
 
 	user := new(User)
 	now := time.Now()
@@ -140,6 +199,21 @@ func (db *db) Delete(uid uuid.UUID) error {
 		return errNotFound
 	}
 	return nil
+}
+
+func (db *db) AdminUpdate(uid uuid.UUID, username string, isAdmin bool) (*User, error) {
+	query := "update users set username=$1, is_admin=$2 where uid=$3 returning created_at, edited_at"
+
+	user := new(User)
+	user.Uid = uid
+	user.Username = username
+	user.IsAdmin = isAdmin
+
+	err := db.QueryRow(context.Background(), query, username, isAdmin, uid).Scan(&user.Created, &user.Edited)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (db *db) CheckPassword(uid uuid.UUID, password string) (bool, error) {

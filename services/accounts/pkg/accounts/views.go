@@ -46,6 +46,7 @@ func (user *User) UserInfo() (*pb.UserInfo, error) {
 	userinfo.Username = user.Username
 	userinfo.Created = created
 	userinfo.Edited = edited
+	userinfo.IsAdmin = user.IsAdmin
 
 	return userinfo, nil
 }
@@ -62,6 +63,38 @@ func (s *Service) validateServiceToken(token string) error {
 		return statusInvalidServiceToken
 	}
 	return nil
+}
+
+func (s *Service) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
+	var pageSize int32
+
+	if req.PageSize == 0 {
+		pageSize = 10
+	} else {
+		pageSize = req.PageSize
+	}
+
+	users, pageCount, err := s.Store.List(req.PageNumber, pageSize)
+	if err != nil {
+		return nil, internalServerError(err)
+	}
+
+	response := new(pb.ListUsersResponse)
+
+	for _, comment := range users {
+		singleComment, err := comment.UserInfo()
+		if err != nil {
+			return nil, internalServerError(err)
+		}
+
+		response.Users = append(response.Users, singleComment)
+	}
+
+	response.PageNumber = req.PageNumber
+	response.PageSize = pageSize
+	response.PageCount = pageCount
+
+	return response, nil
 }
 
 func (s *Service) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.UserInfo, error) {
@@ -291,6 +324,32 @@ func (s *Service) GetUserByToken(ctx context.Context, req *pb.GetUserByTokenRequ
 			return nil, internalServerError(err)
 		}
 		return response, nil
+	default:
+		return nil, internalServerError(err)
+	}
+}
+
+func (s *Service) AdminEditUser(ctx context.Context, req *pb.AdminEditUserRequest) (*pb.UserInfo, error) {
+	statusError := s.validateServiceToken(req.ApiToken)
+	if statusError != nil {
+		return nil, statusError
+	}
+
+	uid, err := uuid.Parse(req.Uid)
+	if err != nil {
+		return nil, statusInvalidUUID
+	}
+
+	user, err := s.Store.AdminUpdate(uid, req.Username, req.IsAdmin)
+	switch err {
+	case nil:
+		userinfo, err := user.UserInfo()
+		if err != nil {
+			return nil, internalServerError(err)
+		}
+		return userinfo, nil
+	case errNotFound:
+		return nil, statusInvalidUUID
 	default:
 		return nil, internalServerError(err)
 	}

@@ -5,7 +5,8 @@ import "google/protobuf/timestamp.proto";
 package accounts;
 
 service Accounts {
-  // Service's methods
+  /* Service's generic methods */
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
   rpc GetUser(GetUserRequest) returns (UserInfo);
   rpc AddUser(AddUserRequest) returns (UserInfo);
   rpc EditUser(EditUserRequest) returns (UserInfo);
@@ -17,9 +18,21 @@ service Accounts {
   rpc RefreshUserToken(RefreshUserTokenRequest) returns (UserTokenResponse);
   // Utility
   rpc GetUserByToken(GetUserByTokenRequest) returns (UserInfo);
+  // Admin panel
+  rpc AdminEditUser(AdminEditUserRequest) returns (UserInfo);
 }
 
-// Service's methods
+/* Service's generic methods */
+message ListUsersRequest {
+  int32 pageSize = 1;
+  int32 pageNumber = 2;
+}
+message  ListUsersResponse {
+  int32 pageSize = 1;
+  int32 pageNumber = 2;
+  int32 pageCount = 3;
+  repeated UserInfo users = 4;
+}
 message GetUserRequest {
   string uid = 1;
 }
@@ -73,4 +86,11 @@ message RefreshUserTokenRequest {
 message GetUserByTokenRequest {
   string apiToken = 1;
   string userToken = 2;
+}
+// Admin panel
+message AdminEditUserRequest {
+  string apiToken = 1;
+  string uid = 2;
+  bool isAdmin = 3;
+  string username = 4;
 }
