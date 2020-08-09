@@ -130,7 +130,6 @@ export default {
           this.$router.push({ name: "Home" });
         })
         .catch((error) => {
-          console.log(error);
           this.$bvToast.toast(error, {
             title: "Full news deleting error",
             autoHideDelay: 5000,

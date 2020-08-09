@@ -11,7 +11,7 @@
         />
       </b-form-group>
 
-      <b-form-group id="input-group-new-url" label="URL:" label-for="input-newes-url">
+      <b-form-group id="input-group-new-url" label="URL:" label-for="input-news-url">
         <b-form-input
           id="input-news-url"
           v-model="form.uri"
