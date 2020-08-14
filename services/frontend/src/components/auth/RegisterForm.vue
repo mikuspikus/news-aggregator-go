@@ -55,6 +55,7 @@
 </template>
 
 <script>
+import errhandler from "../../utility/errhandler.js";
 export default {
   name: "register-form",
 
@@ -103,7 +104,11 @@ export default {
         })
         .then(() => this.$router.push({ name: "Login" }))
         .catch((error) => {
-          this.$bvToast.toast(error, {
+          const data = errhandler.handle(error);
+
+          console.log(data);
+          
+          this.$bvToast.toast(data.message, {
             title: "Register Error",
             autoHideDelay: 5000,
             variant: "white",

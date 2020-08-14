@@ -33,6 +33,8 @@
 </template>
 
 <script>
+import errhandler from '../../utility/errhandler.js'
+
 export default {
   name: "login-form",
 
@@ -60,8 +62,11 @@ export default {
         })
         .then(() => this.$router.push({ name: 'Home'}))
         .catch((error) => {
-          console.log(error)
-          this.$bvToast.toast(error, {
+          const data = errhandler.handle(error);
+
+          console.log(data);
+
+          this.$bvToast.toast(data.message, {
             title: "Login Error",
             autoHideDelay: 5000,
             variant: "white",
