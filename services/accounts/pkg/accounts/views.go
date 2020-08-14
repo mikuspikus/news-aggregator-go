@@ -13,14 +13,16 @@ import (
 )
 
 var (
-	statusInvalidUUID         = status.Error(codes.InvalidArgument, "invalid UUID")
-	statusInvalidToken        = status.Error(codes.InvalidArgument, "invalid token")
-	statusInvalidRefreshToken = status.Error(codes.InvalidArgument, "invalid refresh token")
-	statusInvalidSecret       = status.Error(codes.InvalidArgument, "invalid secret")
+	statusInvalidUUID            = status.Error(codes.InvalidArgument, "invalid UUID")
+	statusInvalidToken           = status.Error(codes.InvalidArgument, "invalid token")
+	statusInvalidRefreshToken    = status.Error(codes.InvalidArgument, "invalid refresh token")
+	statusInvalidSecret          = status.Error(codes.InvalidArgument, "invalid secret")
+	statusInvalidUserCredentials = status.Error(codes.InvalidArgument, "invalid username or password")
 
-	statusInvalidServiceToken    = status.Error(codes.Unauthenticated, "invalid service token")
-	statusInvalidUserCredentials = status.Error(codes.Unauthenticated, "invalid username or password")
-	statusServiceTokenNotFound   = status.Error(codes.Unauthenticated, "service token not found")
+	statusUsernameAlreadyTaken = status.Error(codes.AlreadyExists, "username already taken")
+
+	statusInvalidServiceToken  = status.Error(codes.Unauthenticated, "invalid service token")
+	statusServiceTokenNotFound = status.Error(codes.Unauthenticated, "service token not found")
 
 	statusNotFoundByUUID      = status.Error(codes.NotFound, "not found by UUID")
 	statusUserNotFoundByToken = status.Error(codes.NotFound, "user not found by token")
@@ -138,14 +140,18 @@ func (s *Service) AddUser(ctx context.Context, req *pb.AddUserRequest) (*pb.User
 	password := req.Password
 
 	user, err := s.Store.Create(username, password)
-	if err != nil {
+	switch err {
+	case nil:
+		response, err := user.UserInfo()
+		if err != nil {
+			return nil, internalServerError(err)
+		}
+		return response, nil
+	case errUsernameAlreadyTaken:
+		return nil, statusUsernameAlreadyTaken
+	default:
 		return nil, internalServerError(err)
 	}
-	response, err := user.UserInfo()
-	if err != nil {
-		return nil, internalServerError(err)
-	}
-	return response, nil
 }
 
 func (s *Service) EditUser(ctx context.Context, req *pb.EditUserRequest) (*pb.UserInfo, error) {

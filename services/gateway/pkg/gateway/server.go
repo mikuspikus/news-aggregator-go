@@ -256,6 +256,10 @@ func handleRPCErrors(w http.ResponseWriter, err error) {
 		http.Error(w, st.Message(), http.StatusBadRequest)
 		return
 
+	case codes.AlreadyExists:
+		http.Error(w, st.Message(), http.StatusBadRequest)
+		return
+
 	case codes.Unauthenticated:
 		w.WriteHeader(http.StatusForbidden)
 		return

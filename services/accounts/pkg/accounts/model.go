@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"math"
 	"time"
@@ -17,8 +18,9 @@ const (
 )
 
 var (
-	errNotFound   = errors.New("user not found")
-	errNotCreated = errors.New("user not created")
+	errNotFound             = errors.New("user not found")
+	errNotCreated           = errors.New("user not created")
+	errUsernameAlreadyTaken = errors.New("this username already taken")
 )
 
 // User defines inner representation of user
@@ -65,6 +67,15 @@ func hashPassword(pwd string) (string, error) {
 func checkPassword(pwd, hashedPwd string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(pwd))
 	return err == nil
+}
+
+// _pgErrCode tries to convert err into pgconn.PgErr and extract its code. Returns code and conversion success status
+func _pgErrCode(err error) (string, bool) {
+	if pgerr, ok := err.(*pgconn.PgError); ok {
+		return pgerr.Code, true
+	}
+	return "", false
+
 }
 
 func (db *db) pageCount(pageSize int32) (int32, error) {
@@ -156,6 +167,11 @@ func (db *db) Create(username, password string) (*User, error) {
 
 	cmd, err := db.Exec(context.Background(), query, uid.String(), username, hashedPwd, now, now)
 	if err != nil {
+		if code, ok := _pgErrCode(err); ok && code == "23505" {
+			//Code 203505 for 'unique key violation' error
+			//username is considered to be the only one unique field in users table
+			return nil, errUsernameAlreadyTaken
+		}
 		return nil, err
 	}
 
