@@ -25,7 +25,7 @@
 
         <b-col sm="7" md="6">
           <b-pagination
-            v-model="currnetPageNumber"
+            v-model="currentPageNumber"
             @input="changePage"
             :total-rows="pageCount"
             :per-page="1"
@@ -54,6 +54,7 @@
 
 <script>
 import User from "../admin/User.vue";
+import errhandler from '../../utility/errhandler.js'
 
 export default {
   name: "admin-users",
@@ -64,7 +65,7 @@ export default {
     return {
       users: [],
 
-      currnetPageNumber: 1,
+      currentPageNumber: 1,
       pageSize: 25,
       pageOptions: [5, 10, 15, 20, 25, 50],
       pageCount: 1,
@@ -72,13 +73,13 @@ export default {
   },
 
   created() {
-    this.fetch(this.currnetPageNumber, this.pageSize);
+    this.fetch(this.currentPageNumber, this.pageSize);
   },
 
   methods: {
     changePage(newPageNumber) {
-      this.currnetPageNumber = newPageNumber;
-      this.fetch(this.currnetPageNumber, this.pageSize);
+      this.currentPageNumber = newPageNumber;
+      this.fetch(this.currentPageNumber, this.pageSize);
     },
 
     changePageSize(newPageSize) {
@@ -98,8 +99,10 @@ export default {
           this.pageCount = response.data.page_count;
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Admin users fetching error",
+          const { message, code } = errhandler.handle(error);
+          const title = 'Admin users fetching error' + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

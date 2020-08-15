@@ -104,12 +104,11 @@ export default {
         })
         .then(() => this.$router.push({ name: "Login" }))
         .catch((error) => {
-          const data = errhandler.handle(error);
+          const { message, code } = errhandler.handle(error);
+          const title = "Register error" + (code ? ` with code ${code}` : "");
 
-          console.log(data);
-          
-          this.$bvToast.toast(data.message, {
-            title: "Register Error",
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

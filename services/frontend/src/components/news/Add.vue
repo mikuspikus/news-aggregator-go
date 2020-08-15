@@ -33,6 +33,8 @@
 </template>
 
 <script>
+import errhandler from '../../utility/errhandler.js'
+
 export default {
   name: "add-news-form",
 
@@ -61,8 +63,10 @@ export default {
           })
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Error",
+          const { message, code } = errhandler.handle(error);
+          const title = "News adding error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

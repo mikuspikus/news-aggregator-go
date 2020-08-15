@@ -65,6 +65,7 @@
 </template>
 
 <script>
+import errhandler from '../../utility/errhandler.js'
 import NewsEditForm from "../news/Edit.vue";
 
 export default {
@@ -130,8 +131,10 @@ export default {
           this.$router.push({ name: "Home" });
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Full news deleting error",
+          const { message, code } = errhandler.handle(error);
+          const title = "News deleting error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",
@@ -148,8 +151,10 @@ export default {
           this.username = response.data.username;
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Full news fetching error",
+          const { message, code } = errhandler.handle(error);
+          const title = "User fetching error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

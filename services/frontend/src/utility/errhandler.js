@@ -11,6 +11,9 @@ const errhandler = {
         const code = error.status
 
         switch (code) {
+            case 401:
+                msg = 'unauthorized'
+                break
             case 403:
                 msg = "unauthenticated"
                 break

@@ -25,6 +25,8 @@
 </template>
 
 <script>
+import errhandler from "../../utility/errhandler.js";
+
 export default {
   name: "Navbar",
 
@@ -43,8 +45,10 @@ export default {
           this.$router.push({ name: "Home" }).catch(() => {});
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Logout Error",
+          const { message, code } = errhandler.handle(error);
+          const title = "Logout error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-right",

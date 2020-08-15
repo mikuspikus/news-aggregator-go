@@ -92,6 +92,8 @@
 
 <script>
 import { JSONView } from "vue-json-component";
+import errhandler from '../../utility/errhandler.js'
+
 export default {
   name: "stats-panel-full",
 
@@ -144,8 +146,10 @@ export default {
           this.pageCount = response.data.page_count;
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Full stats error",
+          const { message, code } = errhandler.handle(error);
+          const title = `${this.serviceName} stats fetching error` + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",
@@ -175,7 +179,7 @@ export default {
           sortable: true,
           class: "align-middle",
           formatter: (value) => {
-            return value ? value : "Anonymous";
+            return value !== '00000000-0000-0000-0000-000000000000' ? value : "Anonymous";
           },
         },
         {

@@ -58,6 +58,8 @@
 </template>
 
 <script>
+import errhandler from '../../utility/errhandler.js'
+
 export default {
   name: "admin-user",
 
@@ -138,8 +140,10 @@ export default {
           this.edited = response.data.edited;
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Admin user editing error",
+          const { message, code } = errhandler.handle(error);
+          const title = 'Admin users editing error' + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

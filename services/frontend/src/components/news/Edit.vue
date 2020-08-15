@@ -41,6 +41,8 @@
 </template>
 
 <script>
+import errhandler from '../../utility/errhandler.js'
+
 export default {
   name: "news-edit-form",
 
@@ -77,8 +79,11 @@ export default {
           this.$emit("update:edit", false);
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "News Editing Error",
+          const { message, code } = errhandler.handle(error);
+          const title = "News editing error" + (code ? ` with code ${code}` : "");
+          
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

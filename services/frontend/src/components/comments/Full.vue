@@ -54,6 +54,7 @@
 
 <script>
 import CommentEditForm from "../comments/Edit.vue";
+import errhandler from "../../utility/errhandler.js";
 
 export default {
   name: "comment-full",
@@ -92,9 +93,11 @@ export default {
           this.$emit("delete-comment-by-index", this.idx);
         })
         .catch((error) => {
-          console.log(error);
-          this.$bvToast.toast(error, {
-            title: "Full comment deleting error",
+          const { message, code } = errhandler.handle(error);
+          const title =
+            "Comment deleting error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",
@@ -115,8 +118,10 @@ export default {
           this.username = response.data.username;
         })
         .catch((error) => {
-          this.$bvToast.toast(error, {
-            title: "Full comment fetching error",
+          const { message, code } = errhandler.handle(error);
+          const title = "User fetching error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

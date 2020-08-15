@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import errhandler from '../../utility/errhandler.js'
+import errhandler from "../../utility/errhandler.js";
 
 export default {
   name: "login-form",
@@ -60,14 +60,12 @@ export default {
           },
           axios: this.$http,
         })
-        .then(() => this.$router.push({ name: 'Home'}))
+        .then(() => this.$router.push({ name: "Home" }))
         .catch((error) => {
-          const data = errhandler.handle(error);
-
-          console.log(data);
-
-          this.$bvToast.toast(data.message, {
-            title: "Login Error",
+          const { message, code } = errhandler.handle(error);
+          const title = "Login error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",

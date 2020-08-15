@@ -36,6 +36,8 @@
 </template>
 
 <script>
+import errhandler from "../../utility/errhandler.js";
+
 export default {
   name: "comment-edit-form",
 
@@ -72,9 +74,11 @@ export default {
           this.$emit("update:edit", false);
         })
         .catch((error) => {
-          console.log(error);
-          this.$bvToast.toast(error, {
-            title: "Comment Editing Error",
+          const { message, code } = errhandler.handle(error);
+          const title =
+            "Comment editing error" + (code ? ` with code ${code}` : "");
+          this.$bvToast.toast(message, {
+            title: title,
             autoHideDelay: 5000,
             variant: "white",
             toaster: "b-toaster-bottom-center",
