@@ -83,8 +83,8 @@ func (s *Service) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.
 
 	response := new(pb.ListUsersResponse)
 
-	for _, comment := range users {
-		singleComment, err := comment.UserInfo()
+	for _, user := range users {
+		singleComment, err := user.UserInfo()
 		if err != nil {
 			return nil, internalServerError(err)
 		}

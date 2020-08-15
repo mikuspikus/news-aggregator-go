@@ -258,6 +258,8 @@ func (ac *AccountsClient) RefreshUserToken(ctx context.Context, token, refreshTo
 	return response.Token, response.RefreshToken, nil
 }
 
+// User administration
+
 func (s *Server) listUsers() http.HandlerFunc {
 	type Response struct {
 		Users      []*User `json:"users"`
@@ -267,7 +269,7 @@ func (s *Server) listUsers() http.HandlerFunc {
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		userToken := getAuthorizationToken(r)
-		if userToken != "" {
+		if userToken == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -286,13 +288,13 @@ func (s *Server) listUsers() http.HandlerFunc {
 
 		ctx := r.Context()
 
-		comments, pageCount, err := s.Accounts.ListUser(ctx, page, size)
+		users, pageCount, err := s.Accounts.ListUser(ctx, page, size)
 		if err != nil {
 			handleRPCErrors(w, err)
 			return
 		}
 		httpResponse := Response{
-			Users:      comments,
+			Users:      users,
 			PageSize:   size,
 			PageNumber: page,
 			PagesCount: pageCount,
