@@ -17,7 +17,7 @@
 <script>
 // @ is an alias to /src
 import AddNewsForm from "@/components/news/Add.vue";
-import NewsPage from "../components/news/NewsPage.vue";
+import NewsPage from "../components/news/Page.vue";
 
 export default {
   name: "index-view",

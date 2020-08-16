@@ -22,6 +22,7 @@
           </b-col>
         </b-row>
       </template>
+
       <template v-else>
         <template v-for="snews in news">
           <b-row :key="snews.uid">
