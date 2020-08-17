@@ -180,6 +180,7 @@ services:
       dockerfile: services/comments/.redis/Dockerfile
     expose:
       - 6379
+
   gateway:
     build:
       context: .
@@ -203,6 +204,23 @@ services:
       - accounts
       - news
       - kafka
+
+  frontend:
+    build:
+      context: services/frontend
+      dockerfile: Dockerfile
+    env_file:
+      - services/frontend/.env.local
+    command: ["nginx", "-g", "daemon off;"]
+    expose:
+      - 80
+    ports:
+      - "8000:80"
+    restart: on-failure
+    links:
+      - gateway
+    depends_on:
+      - gateway
 
   jaeger:
     image: jaegertracing/all-in-one:latest
