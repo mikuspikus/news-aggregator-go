@@ -5,9 +5,9 @@ import axios from 'axios'
 
 const keyword = 'Bearer'
 
-const loginuri = process.env.VUE_APP_LOGINURI ? process.env.VUE_APP_LOGINURI : 'http://localhost:8080/api/auth/token'
-const registeruri = process.env.VUE_APP_REGISTERURI ? process.env.VUE_APP_REGISTERURI : 'http://localhost:8080/api/user'
-const refreshuri = process.env.VUE_APP_REFRESHURI ? process.env.VUE_APP_REFRESHURI : 'http://localhost:8080/api/auth/refresh'
+const loginuri = process.env.VUE_APP_LOGIN_URI ? process.env.VUE_APP_LOGIN_URI : 'http://localhost:8080/api/auth/token'
+const registeruri = process.env.VUE_APP_REGISTER_URI ? process.env.VUE_APP_REGISTER_URI : 'http://localhost:8080/api/user'
+const refreshuri = process.env.VUE_APP_REFRESH_URI ? process.env.VUE_APP_REFRESH_URI : 'http://localhost:8080/api/auth/refresh'
 
 Vue.use(Vuex)
 

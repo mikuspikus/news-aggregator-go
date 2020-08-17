@@ -23,9 +23,8 @@ import axios from 'axios'
 
 const keyword = "Bearer"
 const token = localStorage.getItem("token")
-const baseURL = process.env.VUE_APP_BASEURL ? process.env.VUE_APP_BASEURL : "http://localhost:8080/api/"
-const requester = axios.create({ baseURL: baseURL, headers: { 'Access-Control-Allow-Origin': 'http://localhost:8000', }})
-
+const baseURL = process.env.VUE_APP_BASE_URI ? process.env.VUE_APP_BASE_URI : "http://localhost:8080/api/"
+const requester = axios.create({ baseURL: baseURL })
 
 if (token) {
   requester.defaults.headers.common['Authorization'] = `${keyword} ${token}`
