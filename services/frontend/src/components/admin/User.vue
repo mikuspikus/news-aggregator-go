@@ -1,64 +1,74 @@
 <template>
   <div :id="'user-' + useruid">
     <b-card
+      no-body
       class="m-1 p-0 text-left"
       border-variant="dark"
       :header-bg-variant="stateHeaderBg"
       :header-text-variant="stateHeaderText"
     >
       <template v-slot:header>
-        <b-row>
+        <b-row v-b-toggle="'user-form-' + useruid">
           <b-col class="text-left">
             <!-- UUID -->
             <label class="mb-2 mr-sm-2 mb-sm-0">UUID: {{ useruid }}</label>
           </b-col>
+
           <b-col class="text-right">
-            <b-button size="sm" variant="dark" @click="collapse = !collapse">
-              <b-icon-arrow-bar-up v-if="!collapse" />
-              <b-icon-arrow-bar-down v-else />
-            </b-button>
+            <span class="when-open">
+              <b-icon-arrow-bar-up />
+            </span>
+
+            <span class="when-closed">
+              <b-icon-arrow-bar-down />
+            </span>
           </b-col>
         </b-row>
       </template>
-      <b-form @submit="submit" @reset="reset" v-if="show && !collapse">
-        <!-- Username -->
-        <b-form-group id="input-group-username" label="Username:" label-for="input-username">
-          <b-form-input
-            id="input-username"
-            v-model="form.username"
-            type="text"
-            required
-            :state="stateUsername"
-          />
-        </b-form-group>
 
-        <hr />
-        <!-- Is admin -->
-        <label class="mr-sm-2" for="inline-form-input-is-admin">Admin status</label>
-        <b-form-checkbox
-          class="mb-2 mr-sm-2 mb-sm-0"
-          name="inline-form-input-is-admin"
-          switch
-          v-model="form.is_admin"
-          :state="stateIsAdmin"
-        />
+      <b-collapse :id="'user-form-' + useruid">
+        <b-card-body>
+          <b-form @submit="submit" @reset="reset" v-if="show">
+            <!-- Username -->
+            <b-form-group id="input-group-username" label="Username:" label-for="input-username">
+              <b-form-input
+                id="input-username"
+                v-model="form.username"
+                type="text"
+                required
+                :state="stateUsername"
+              />
+            </b-form-group>
 
-        <hr />
-        <!-- Buttons -->
-        <b-button type="reset" variant="white" :disabled="!changedAny">
-          <b-icon-x-square-fill />
-        </b-button>
+            <hr />
+            <!-- Is admin -->
+            <label class="mr-sm-2" for="inline-form-input-is-admin">Admin status</label>
+            <b-form-checkbox
+              class="mb-2 mr-sm-2 mb-sm-0"
+              name="inline-form-input-is-admin"
+              switch
+              v-model="form.is_admin"
+              :state="stateIsAdmin"
+            />
 
-        <b-button type="submit" variant="white" :disabled="!changedAny">
-          <b-icon-check2-square />
-        </b-button>
-      </b-form>
+            <hr />
+            <!-- Buttons -->
+            <b-button type="reset" variant="white" :disabled="!changedAny">
+              <b-icon-x-square-fill />
+            </b-button>
+
+            <b-button type="submit" variant="white" :disabled="!changedAny">
+              <b-icon-check2-square />
+            </b-button>
+          </b-form>
+        </b-card-body>
+      </b-collapse>
     </b-card>
   </div>
 </template>
 
 <script>
-import errhandler from '../../utility/errhandler.js'
+import errhandler from "../../utility/errhandler.js";
 
 export default {
   name: "admin-user",
@@ -141,7 +151,8 @@ export default {
         })
         .catch((error) => {
           const { message, code } = errhandler.handle(error);
-          const title = 'Admin users editing error' + (code ? ` with code ${code}` : "");
+          const title =
+            "Admin users editing error" + (code ? ` with code ${code}` : "");
           this.$bvToast.toast(message, {
             title: title,
             autoHideDelay: 5000,
@@ -155,4 +166,8 @@ export default {
 </script>
 
 <style>
+.collapsed > .col > .when-open,
+.not-collapsed > .col > .when-closed {
+  display: none;
+}
 </style>
