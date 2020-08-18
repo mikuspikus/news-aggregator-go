@@ -50,7 +50,7 @@ func (comment *Comment) SingleComment() (*pb.SingleComment, error) {
 // Service structure implements gRPC interface for Comments Service
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *stst.APITokenStorage
+	tokenStorage stst.APITokenStorage
 }
 
 func (s *Service) validateServiceToken(token string) error {

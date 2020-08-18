@@ -15,7 +15,13 @@ var (
 
 const DefaultExpirationTime = time.Minute * 30
 
-type UserTokenStorage struct {
+type UserTokenStorage interface {
+	Add(uid uuid.UUID) (string, error)
+	Get(token string) (string, error)
+	Delete(token string) error
+}
+
+type UTStorage struct {
 	redis *redis.Client
 }
 
@@ -23,7 +29,7 @@ func generateToken() string {
 	return uuid.New().String()
 }
 
-func New(addr, password string, db int) (*UserTokenStorage, error) {
+func New(addr, password string, db int) (*UTStorage, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -35,10 +41,10 @@ func New(addr, password string, db int) (*UserTokenStorage, error) {
 		return nil, err
 	}
 
-	return &UserTokenStorage{redis: client}, nil
+	return &UTStorage{redis: client}, nil
 }
 
-func (storage *UserTokenStorage) Add(uid uuid.UUID) (string, error) {
+func (storage *UTStorage) Add(uid uuid.UUID) (string, error) {
 	token := generateToken()
 
 	_, err := storage.redis.Set(context.Background(), token, uid.String(), DefaultExpirationTime).Result()
@@ -48,7 +54,7 @@ func (storage *UserTokenStorage) Add(uid uuid.UUID) (string, error) {
 	return token, nil
 }
 
-func (storage *UserTokenStorage) Get(token string) (string, error) {
+func (storage *UTStorage) Get(token string) (string, error) {
 	uid, err := storage.redis.Get(context.Background(), token).Result()
 	switch err {
 	case nil:
@@ -60,7 +66,7 @@ func (storage *UserTokenStorage) Get(token string) (string, error) {
 	}
 }
 
-func (storage *UserTokenStorage) Del(token string) error {
+func (storage *UTStorage) Delete(token string) error {
 	_, err := storage.redis.Del(context.Background(), token).Result()
 	return err
 }

@@ -21,12 +21,17 @@ func generateToken() string {
 	return uuid.New().String()
 }
 
-type APITokenStorage struct {
+type APIStorage struct {
 	redis *redis.Client
 	apps  map[string]string
 }
 
-func New(addr, password string, db int, apps map[string]string) (*APITokenStorage, error) {
+type APITokenStorage interface {
+	AddToken(appID, appSECRET string) (string, error)
+	CheckToken(token string) (bool, error)
+}
+
+func New(addr, password string, db int, apps map[string]string) (*APIStorage, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		DB:       db,
@@ -37,10 +42,10 @@ func New(addr, password string, db int, apps map[string]string) (*APITokenStorag
 		return nil, err
 	}
 
-	return &APITokenStorage{redis: client, apps: apps}, nil
+	return &APIStorage{redis: client, apps: apps}, nil
 }
 
-func (storage *APITokenStorage) AddToken(appID, appSECRET string) (string, error) {
+func (storage *APIStorage) AddToken(appID, appSECRET string) (string, error) {
 	secret, exists := storage.apps[appID]
 
 	if !exists {
@@ -59,7 +64,7 @@ func (storage *APITokenStorage) AddToken(appID, appSECRET string) (string, error
 }
 
 // CheckTokens may return ErrTokenNotFound or regular error
-func (storage *APITokenStorage) CheckToken(token string) (bool, error) {
+func (storage *APIStorage) CheckToken(token string) (bool, error) {
 	exists, err := storage.redis.Get(context.Background(), token).Result()
 	switch err {
 	case nil:

@@ -31,9 +31,9 @@ type Config struct {
 
 type Service struct {
 	Store         DataStoreHandler
-	ServiceTokens *ststorage.APITokenStorage
-	RefreshTokens *rtstorage.RefreshTokenStorage
-	UserTokens    *utstorage.UserTokenStorage
+	ServiceTokens ststorage.APITokenStorage
+	RefreshTokens rtstorage.RefreshTokenStorage
+	UserTokens    utstorage.UserTokenStorage
 }
 
 func New(connString, addr, password string, db int, apps map[string]string) (*Service, error) {

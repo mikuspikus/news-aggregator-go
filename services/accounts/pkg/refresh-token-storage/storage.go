@@ -15,7 +15,14 @@ var (
 
 const DefaultExpirationTime = time.Hour * 24 * 7 * 2
 
-type RefreshTokenStorage struct {
+type RefreshTokenStorage interface {
+	Add(token string) (string, error)
+	Get(refreshToken string) (string, error)
+	Check(token, refreshToken string) (bool, error)
+	Delete(refreshToken string) error
+}
+
+type RTStorage struct {
 	redis *redis.Client
 }
 
@@ -23,7 +30,7 @@ func generateToken() string {
 	return uuid.New().String()
 }
 
-func New(addr, password string, db int) (*RefreshTokenStorage, error) {
+func New(addr, password string, db int) (*RTStorage, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -35,10 +42,10 @@ func New(addr, password string, db int) (*RefreshTokenStorage, error) {
 		return nil, err
 	}
 
-	return &RefreshTokenStorage{redis: client}, nil
+	return &RTStorage{redis: client}, nil
 }
 
-func (storage *RefreshTokenStorage) Add(token string) (string, error) {
+func (storage *RTStorage) Add(token string) (string, error) {
 	refreshToken := generateToken()
 
 	_, err := storage.redis.Set(context.Background(), refreshToken, token, DefaultExpirationTime).Result()
@@ -48,7 +55,7 @@ func (storage *RefreshTokenStorage) Add(token string) (string, error) {
 	return refreshToken, nil
 }
 
-func (storage *RefreshTokenStorage) Get(refreshToken string) (string, error) {
+func (storage *RTStorage) Get(refreshToken string) (string, error) {
 	token, err := storage.redis.Get(context.Background(), refreshToken).Result()
 	switch err {
 	case nil:
@@ -60,7 +67,7 @@ func (storage *RefreshTokenStorage) Get(refreshToken string) (string, error) {
 	}
 }
 
-func (storage *RefreshTokenStorage) Check(token, refreshToken string) (bool, error) {
+func (storage *RTStorage) Check(token, refreshToken string) (bool, error) {
 	refreshTokenFromRedis, err := storage.Get(refreshToken)
 	switch err {
 	case nil:
@@ -72,7 +79,7 @@ func (storage *RefreshTokenStorage) Check(token, refreshToken string) (bool, err
 	}
 }
 
-func (storage *RefreshTokenStorage) Del(refreshToken string) error {
+func (storage *RTStorage) Delete(refreshToken string) error {
 	_, err := storage.redis.Del(context.Background(), refreshToken).Result()
 	return err
 }

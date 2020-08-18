@@ -285,7 +285,7 @@ func (s *Service) RefreshUserToken(ctx context.Context, req *pb.RefreshUserToken
 		return nil, internalServerError(err)
 	}
 
-	err = s.RefreshTokens.Del(refreshToken)
+	err = s.RefreshTokens.Delete(refreshToken)
 	if err != nil {
 		return nil, internalServerError(err)
 	}

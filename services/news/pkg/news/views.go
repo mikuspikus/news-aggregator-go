@@ -50,7 +50,7 @@ func (news *News) SingleNews() (*pb.SingleNews, error) {
 
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *stst.APITokenStorage
+	tokenStorage stst.APITokenStorage
 }
 
 func (s *Service) validateServiceToken(token string) error {
