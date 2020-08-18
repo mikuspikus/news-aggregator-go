@@ -32,14 +32,14 @@ func newDB(connstring string) (*db, error) {
 }
 
 type DataStoreHandler interface {
-	ListAccountsStats(pageNumber, pageSize int32) (stats []*Stats, pageCount int32, err error)
-	AddAccountsStats(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error)
+	ListAccounts(pageNumber, pageSize int32) (stats []*Stats, pageCount int32, err error)
+	AddAccounts(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error)
 
 	ListNews(pageNumber, pageSize int32) (stats []*Stats, pageCount int32, err error)
-	AddNewsStats(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error)
+	AddNews(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error)
 
 	ListComments(pageNumber, pageSize int32) (stats []*Stats, pageCount int32, err error)
-	AddCommentsStats(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error)
+	AddComments(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error)
 
 	Close()
 }
@@ -129,11 +129,11 @@ func (db *db) addStats(tableName string, user uuid.UUID, action string, input, o
 	return stats, nil
 }
 
-func (db *db) ListAccountsStats(pageNumber, pageSize int32) (stats []*Stats, pageCount int32, err error) {
+func (db *db) ListAccounts(pageNumber, pageSize int32) (stats []*Stats, pageCount int32, err error) {
 	return db.listStats("accounts_view", pageNumber, pageSize)
 }
 
-func (db *db) AddAccountsStats(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
+func (db *db) AddAccounts(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
 	return db.addStats("accounts", user, action, input, output)
 }
 
@@ -141,7 +141,7 @@ func (db *db) ListNews(pageNumber, pageSize int32) (stats []*Stats, pageCount in
 	return db.listStats("news_view", pageNumber, pageSize)
 }
 
-func (db *db) AddNewsStats(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
+func (db *db) AddNews(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
 	return db.addStats("news", user, action, input, output)
 }
 
@@ -149,6 +149,6 @@ func (db *db) ListComments(pageNumber, pageSize int32) (stats []*Stats, pageCoun
 	return db.listStats("comments_view", pageNumber, pageSize)
 }
 
-func (db *db) AddCommentsStats(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
+func (db *db) AddComments(user uuid.UUID, action string, input, output Attrs) (stats *Stats, err error) {
 	return db.addStats("comments", user, action, input, output)
 }
