@@ -63,7 +63,7 @@ func (stats *Stats) SingleStat() (*pb.SingleStat, error) {
 
 type Service struct {
 	db           DataStoreHandler
-	tokenStorage *stst.APITokenStorage
+	tokenStorage stst.APITokenStorage
 }
 
 func (s *Service) validateServiceToken(token string) error {
@@ -98,7 +98,7 @@ func (s *Service) genericListStats(ctx context.Context, req *pb.ListStatsRequest
 	var err error
 	switch target {
 	case ACCOUNTS:
-		stats, pageCount, err = s.db.ListAccountsStats(req.PageNumber, pageSize)
+		stats, pageCount, err = s.db.ListAccounts(req.PageNumber, pageSize)
 	case NEWS:
 		stats, pageCount, err = s.db.ListNews(req.PageNumber, pageSize)
 	case COMMENTS:
@@ -156,13 +156,13 @@ func (s *Service) genericAddStats(ctx context.Context, req *pb.AddStatsRequest, 
 	stats := new(Stats)
 	switch target {
 	case ACCOUNTS:
-		stats, err = s.db.AddAccountsStats(userUID, req.Action, input, output)
+		stats, err = s.db.AddAccounts(userUID, req.Action, input, output)
 
 	case NEWS:
-		stats, err = s.db.AddNewsStats(userUID, req.Action, input, output)
+		stats, err = s.db.AddNews(userUID, req.Action, input, output)
 
 	case COMMENTS:
-		stats, err = s.db.AddCommentsStats(userUID, req.Action, input, output)
+		stats, err = s.db.AddComments(userUID, req.Action, input, output)
 
 	default:
 		err = errUnknownType
